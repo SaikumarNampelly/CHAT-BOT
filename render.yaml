@@ -1,41 +1,20 @@
 services:
-  # ─── Backend Web Service ────────────────────────────────────────
+  # ─── Single Web Service: serves API + static frontend ─────────
   - type: web
-    name: telugu-ai-companion-backend
+    name: telugu-ai-companion
     runtime: node
-    plan: starter # Render free tier uses Starter specs on the free instance type
+    plan: starter
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm run build
     startCommand: npm start
     envVars:
       - key: PORT
         value: 5000
       - key: SUPABASE_URL
-        sync: false # User will input this in Render dashboard
+        sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: FRONTEND_URL
-        sync: false # Set to your frontend static site URL after deployment
-
-  # ─── Frontend Static Site ───────────────────────────────────────
-  - type: web
-    name: telugu-ai-companion-frontend
-    runtime: static
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    publishPath: dist
-    routes:
-      # Route all api calls to backend to avoid CORS issues
-      - type: rewrite
-        source: /api/*
-        # NOTE: If your backend URL ends up being different (e.g. if the name is taken),
-        # replace this destination URL with your actual backend URL on Render.
-        destination: https://telugu-ai-companion-backend.onrender.com/api/*
-      # Fallback to index.html for React Router routing
-      - type: rewrite
-        source: /*
-        destination: /index.html

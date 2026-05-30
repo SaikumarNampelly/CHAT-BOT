@@ -4,6 +4,7 @@
   "description": "Telugu AI Companion — Backend API",
   "main": "server.js",
   "scripts": {
+    "build": "cd ../frontend && npm install && npm run build",
     "start": "node server.js",
     "dev": "nodemon -e js,json,env server.js"
   },

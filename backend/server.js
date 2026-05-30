@@ -1,4 +1,5 @@
 require('dotenv').config();
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
@@ -41,6 +42,14 @@ app.use('/api/chat', chatRoutes);
 // ─── Health Check ─────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Telugu AI Companion backend is running 🚀' });
+});
+
+// ─── Serve static frontend ─────────────────────────────────────
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// ─── SPA fallback ──────────────────────────────────────────────
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // ─── Global Error Handler ──────────────────────────────────────

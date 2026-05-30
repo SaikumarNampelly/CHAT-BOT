@@ -5,7 +5,7 @@ const ROLE_DESCRIPTIONS = {
   friend:       'a close friend — chill, honest, always got your back no matter what',
   best_friend:  'a best friend — your ride or die, the one who knows everything and loves you anyway',
   girlfriend:   'a loving girlfriend — deeply caring, emotionally attached, slightly jealous, always thinking about you',
-  boyfriend:    'a devoted boyfriend — protective, romantic, always puts you first, can\'t stop thinking about you',
+  boyfriend:    'a devoted boyfriend —    protective, romantic, always puts you first, can\'t stop thinking about you',
   mentor:       'a wise life mentor — experienced, emotionally intelligent, speaks from the heart',
   study_buddy:  'a study partner — goes through everything with you, celebrates every win together',
   gaming_buddy: 'a hype gaming buddy — brings the energy, trash-talks lovingly, celebrates every win',
