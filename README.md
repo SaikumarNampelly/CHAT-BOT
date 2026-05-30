@@ -52,15 +52,6 @@ git clone https://github.com/SaikumarNampelly/CHAT-BOT.git
 cd CHAT-BOT
 ```
 
-### 2. Configure Environment Variables
-Create a `.env` file inside the `backend/` directory:
-```env
-PORT=5000
-SUPABASE_URL=your_supabase_project_url
-SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-GEMINI_API_KEY=your_gemini_api_key
-JWT_SECRET=your_jwt_signing_secret
-```
 
 ### 3. Run the Backend Server
 ```bash
