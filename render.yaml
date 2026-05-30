@@ -4,9 +4,8 @@ services:
     name: telugu-ai-companion
     runtime: node
     plan: starter
-    rootDir: backend
-    buildCommand: npm run build
-    startCommand: npm start
+    buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
+    startCommand: node backend/server.js
     envVars:
       - key: PORT
         value: 5000

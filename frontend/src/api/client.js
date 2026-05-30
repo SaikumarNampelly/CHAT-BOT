@@ -1,8 +1,10 @@
 import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 30000,
 });
 
@@ -37,7 +39,7 @@ export async function streamMessage({ companionId, message, mood }, onChunk, onD
   const token = useAuthStore.getState().token;
 
   try {
-    const response = await fetch('/api/chat/message', {
+    const response = await fetch(`${API_BASE}/chat/message`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -88,7 +90,7 @@ export async function streamGreet({ companionId }, onChunk, onDone, onError) {
   const token = useAuthStore.getState().token;
 
   try {
-    const response = await fetch(`/api/chat/greet/${companionId}`, {
+    const response = await fetch(`${API_BASE}/chat/greet/${companionId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
