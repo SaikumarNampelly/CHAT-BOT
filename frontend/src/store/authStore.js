@@ -8,9 +8,17 @@ export const useAuthStore = create(
       token: null,
       isAuthenticated: false,
 
-      setAuth: (user, token) => set({ user, token, isAuthenticated: true }),
+      setAuth: (user, token) => {
+        // Clear any stale companion state from a previous user session
+        localStorage.removeItem('sathi-chat');
+        set({ user, token, isAuthenticated: true });
+      },
 
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      logout: () => {
+        // Clear stale companion state so old companion IDs don't cause 403s
+        localStorage.removeItem('sathi-chat');
+        set({ user: null, token: null, isAuthenticated: false });
+      },
     }),
     {
       name: 'sathi-auth',

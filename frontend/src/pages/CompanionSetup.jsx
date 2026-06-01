@@ -28,7 +28,6 @@ export default function CompanionSetup() {
         role: 'friend',          // default role — personality driven by gender + scenario
         scenario: scenario.trim(),
         language: 'tanglish',
-        gender,
       });
       const { data: list } = await api.get('/companions');
       setCompanions(list);

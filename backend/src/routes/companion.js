@@ -52,9 +52,13 @@ router.post('/', async (req, res) => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[POST /api/companions] Supabase insert error:', JSON.stringify(error, null, 2));
+      throw error;
+    }
     res.status(201).json(data);
   } catch (err) {
+    console.error('[POST /api/companions] Caught error:', err.message, err);
     res.status(500).json({ error: err.message });
   }
 });
