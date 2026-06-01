@@ -1,5 +1,4 @@
 require('dotenv').config();
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 
@@ -44,12 +43,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Telugu AI Companion backend is running 🚀' });
 });
 
-// ─── Serve static frontend ─────────────────────────────────────
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-// ─── SPA fallback ──────────────────────────────────────────────
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+// ─── 404 fallback for unknown API routes ──────────────────────
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
 
 // ─── Global Error Handler ──────────────────────────────────────
@@ -58,10 +54,7 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-}));
+
 
 const server = app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
