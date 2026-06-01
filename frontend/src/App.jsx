@@ -19,6 +19,7 @@ function PublicRoute({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <div className="texture"></div>
       <Routes>
         <Route path="/" element={<Navigate to="/chat" replace />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api, { streamMessage, streamGreet } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
-
-const GENDER_EMOJIS = { female: '👩', male: '👨', other: '🧑' };
+import { useThemeStore } from '../store/themeStore';
 
 function timeStr(iso) {
   if (!iso) return '';
@@ -32,6 +31,7 @@ function getDateGroupLabel(isoString) {
 export default function Chat() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const { toggleTheme } = useThemeStore();
   const {
     companions, activeCompanion,
     messages, isStreaming, streamingText,
@@ -114,6 +114,7 @@ export default function Chat() {
 
   const handleClear = async () => {
     if (!activeCompanion) return;
+    if (!window.confirm('Clear all messages for this companion?')) return;
     await api.delete(`/chat/history/${activeCompanion.id}`);
     clearHistory();
   };
@@ -129,88 +130,130 @@ export default function Chat() {
     }
   };
 
-  // Avatar: use gender emoji if stored, fallback to 🫂
-  const getAvatar = (c) => GENDER_EMOJIS[c?.gender] || '🫂';
+  // Avatar helper
+  const getAvatarChar = (name) => name?.[0]?.toLowerCase() || 'c';
 
   return (
     <div className="chat-layout">
 
-      {/* Sidebar */}
+      {/* ============ SIDEBAR ============ */}
       <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="sidebar-brand">
-            <div className="b-icon">🫂</div>
-            <span>Your Soul</span>
+        <div className="brand">
+          <div className="brand-top">
+            <div className="mark" style={{ fontSize: '20px' }}>🫂</div>
+            <div>
+              <span className="brand-name">Your Soul</span>
+              <span className="brand-tag">Feel the connection</span>
+            </div>
           </div>
-          <button id="new-companion-btn" className="btn-new" onClick={() => navigate('/setup')}>+ New</button>
+          <button id="new-companion-btn" className="btn-new" onClick={() => navigate('/setup')}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Companion
+          </button>
         </div>
 
-        <div className="sidebar-list">
+        <div className="list">
+          <div className="list-label">// active</div>
           {companions.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-3)', fontSize: '12px' }}>
+            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-mid)', fontSize: '12px', fontFamily: 'Space Mono, monospace' }}>
               No companions yet.<br />Create one to start.
             </div>
           )}
           {companions.map((c) => (
             <div key={c.id} id={`companion-${c.id}`}
-              className={`companion-item ${activeCompanion?.id === c.id ? 'active' : ''}`}
+              className={`companion ${activeCompanion?.id === c.id ? 'active' : ''}`}
               onClick={() => setActiveCompanion(c)}>
-              <div className="c-avatar">{getAvatar(c)}</div>
+              <div className="avatar av-md av-fill">{getAvatarChar(c.companion_name)}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="c-name">{c.companion_name}</div>
-                <div className="c-role">{c.gender || 'companion'}</div>
+                <div className="c-role">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px', opacity: 0.8 }}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  {c.gender || 'companion'}
+                </div>
               </div>
               <button
                 className="btn-delete-companion"
                 title="Delete companion"
                 onClick={(e) => handleDeleteCompanion(e, c.id)}
-              >🗑</button>
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
             </div>
           ))}
         </div>
 
-        <div className="sidebar-bottom">
-          <div className="u-avatar">{user?.name?.[0]?.toUpperCase()}</div>
+        <div className="user-footer">
+          <div className="avatar av-sm av-line">{getAvatarChar(user?.name)}</div>
           <span className="u-name">{user?.name}</span>
-          <button id="logout-btn" className="btn-logout" onClick={() => { logout(); navigate('/login'); }} title="Logout">⎋</button>
+          <button id="logout-btn" className="btn-logout" onClick={() => { logout(); navigate('/login'); }} title="Logout">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="chat-main">
+      {/* ============ MAIN CHAT ============ */}
+      <section className="chat-main">
         {!activeCompanion ? (
           <div className="no-companion">
-            <div className="n-emoji">🫂</div>
+            <div className="n-emoji" style={{ fontSize: '24px' }}>🫂</div>
             <h2>Welcome to Your Soul</h2>
             <p>Select a companion from the sidebar or create a new one to start chatting.</p>
-            <button className="btn-create" onClick={() => navigate('/setup')}>+ Create Companion</button>
+            <button className="btn-create" onClick={() => navigate('/setup')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Create Companion
+            </button>
           </div>
         ) : (
           <>
             {/* Header */}
-            <div className="chat-header">
-              <div className="ch-avatar">{getAvatar(activeCompanion)}</div>
-              <div>
-                <div className="ch-name">
-                  <span className="online-dot" />{activeCompanion.companion_name}
+            <header className="chat-header">
+              <div className="avatar av-md av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
+              <div className="ch-info">
+                <div className="ch-name">{activeCompanion.companion_name}</div>
+                <div className="status">
+                  <span className="dot"></span> online · {activeCompanion.gender || 'companion'}
                 </div>
-                <div className="ch-status">{activeCompanion.gender || 'companion'}</div>
               </div>
-              <button id="clear-history-btn" className="btn-clear" onClick={handleClear}>🗑 Clear</button>
-            </div>
+              <div className="header-actions">
+                {/* DARK / LIGHT TOGGLE */}
+                <button className="btn-icon" id="themeToggle" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
+                  <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+                  <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                </button>
+                <button id="clear-history-btn" className="btn-clear" onClick={handleClear}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                  Clear
+                </button>
+              </div>
+            </header>
 
             {/* Messages */}
-            <div className="messages-area">
+            <div className="messages-area" id="messages">
               {loadingHistory && (
-                <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: '12px', padding: '20px' }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-mid)', fontSize: '12px', padding: '20px', fontFamily: 'Space Mono, monospace' }}>
                   Loading messages...
                 </div>
               )}
 
               {!loadingHistory && messages.length === 0 && !isStreaming && (
                 <div className="empty-state">
-                  <div className="e-emoji">{getAvatar(activeCompanion)}</div>
-                  <h3>{activeCompanion.companion_name} is waiting for you...</h3>
+                  <div className="e-emoji">{getAvatarChar(activeCompanion.companion_name)}</div>
+                  <h3>{activeCompanion.companion_name} is waiting...</h3>
                   <p>Say something to get started!</p>
                 </div>
               )}
@@ -229,13 +272,13 @@ export default function Chat() {
                           <span className="chat-date-label">{dateLabel}</span>
                         </div>
                       )}
-                      <div className={`msg-row ${msg.role === 'user' ? 'user' : 'ai'}`}>
+                      <div className={`row ${msg.role === 'user' ? 'sent' : 'recv'}`}>
                         {msg.role === 'assistant' && (
-                          <div className="msg-av">{getAvatar(activeCompanion)}</div>
+                          <div className="avatar av-sm av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
                         )}
-                        <div className={`msg-content ${msg.role === 'user' ? 'user' : 'ai'}`}>
-                          <div className="msg-bubble">{msg.content}</div>
-                          <div className="msg-time">{timeStr(msg.created_at)}</div>
+                        <div className="msg-wrap">
+                          <div className="bubble">{msg.content}</div>
+                          <span className="time">{timeStr(msg.created_at)}</span>
                         </div>
                       </div>
                     </React.Fragment>
@@ -244,13 +287,15 @@ export default function Chat() {
               })()}
 
               {isStreaming && (
-                <div className="msg-row ai">
-                  <div className="msg-av">{getAvatar(activeCompanion)}</div>
-                  <div className="msg-content ai">
-                    {streamingText
-                      ? <div className="msg-bubble">{streamingText}<span style={{ opacity: 0.4 }}>▌</span></div>
-                      : <div className="typing-bubble"><div className="t-dot"/><div className="t-dot"/><div className="t-dot"/></div>
-                    }
+                <div className="row recv">
+                  <div className="avatar av-sm av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
+                  <div className="msg-wrap">
+                    <div className="bubble">
+                      {streamingText
+                        ? <>{streamingText}<span style={{ opacity: 0.4 }}>▌</span></>
+                        : <div className="typing-bubble"><div className="t-dot"/><div className="t-dot"/><div className="t-dot"/></div>
+                      }
+                    </div>
                   </div>
                 </div>
               )}
@@ -265,25 +310,34 @@ export default function Chat() {
             )}
 
             {/* Input */}
-            <div className="input-area">
-              <div className="input-row">
-                <textarea
-                  id="message-input" className="msg-input" rows={1}
+            <footer className="composer">
+              <div className="field">
+                <input
+                  id="message-input"
+                  type="text"
                   placeholder={`Message ${activeCompanion.companion_name}...`}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKey}
                   disabled={isStreaming}
+                  autoComplete="off"
                 />
-                <button id="send-btn" className="send-btn"
-                  onClick={handleSend} disabled={isStreaming || !input.trim()}>
-                  ➤
-                </button>
               </div>
-            </div>
+              <button
+                id="send-btn"
+                className="send"
+                onClick={handleSend}
+                disabled={isStreaming || !input.trim()}
+                aria-label="Send"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h13M13 6l6 6-6 6"/>
+                </svg>
+              </button>
+            </footer>
           </>
         )}
-      </div>
+      </section>
     </div>
   );
 }
