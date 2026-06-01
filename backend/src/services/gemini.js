@@ -148,19 +148,56 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
 
   const url = `${API_BASE}/${MODEL}:streamGenerateContent?alt=sse`;
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': apiKey,
-    },
-    body: JSON.stringify(body),
-  });
+  let response;
+  let maxRetries = 3;
+  let attempt = 0;
+  let delay = 1000;
+
+  while (attempt < maxRetries) {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (response.ok) {
+      break;
+    }
+
+    // Only retry on 503 (Service Unavailable)
+    if (response.status === 503 && attempt < maxRetries - 1) {
+      
+      await new Promise(res => setTimeout(res, delay));
+      delay *= 2; // exponential backoff
+      attempt++;
+    } else {
+      break;
+    }
+  }
 
   if (!response.ok) {
     const errText = await response.text();
     console.error('Gemini API error:', response.status, errText);
-    throw new Error(`Gemini API error ${response.status}: ${errText}`);
+    
+    let errorMessage = `Gemini API error ${response.status}`;
+    try {
+      const errJson = JSON.parse(errText);
+      if (errJson.error && errJson.error.message) {
+        errorMessage = errJson.error.message;
+      }
+    } catch (e) {
+      // Keep original text if not JSON
+      errorMessage = errText;
+    }
+
+    if (response.status === 503) {
+      throw new Error('The AI model is currently experiencing high demand. Please try again in a few seconds.');
+    }
+
+    throw new Error(errorMessage);
   }
 
   let fullText = '';

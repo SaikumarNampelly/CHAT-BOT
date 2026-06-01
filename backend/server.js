@@ -58,6 +58,11 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+}));
+
 const server = app.listen(PORT, () => {
   console.log(`✅ Backend running on http://localhost:${PORT}`);
 });
