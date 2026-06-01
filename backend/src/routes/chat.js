@@ -96,6 +96,8 @@ router.post('/message', async (req, res) => {
         userName: req.user.name,
         history: reversedHistory,
         userMessage: message,
+        userGender: req.body.userGender || 'male',
+        assistantGender: req.body.assistantGender || 'other',
       },
       (chunk) => {
         fullResponse += chunk;

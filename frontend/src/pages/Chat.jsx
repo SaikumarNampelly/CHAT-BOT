@@ -4,6 +4,7 @@ import api, { streamMessage, streamGreet } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
+import EmojiPicker from 'emoji-picker-react';
 
 function timeStr(iso) {
   if (!iso) return '';
@@ -14,11 +15,11 @@ function getDateGroupLabel(isoString) {
   if (!isoString) return '';
   const date = new Date(isoString);
   const now = new Date();
-  
+
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  
+
   if (targetDate.getTime() === today.getTime()) {
     return 'Today';
   } else if (targetDate.getTime() === yesterday.getTime()) {
@@ -43,8 +44,23 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [modalConfig, setModalConfig] = useState(null); // { title, description, confirmText, onConfirm }
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const bottomRef = useRef(null);
+  const emojiPickerRef = useRef(null);
   const greetingTriggered = useRef({});
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     api.get('/companions')
@@ -54,7 +70,7 @@ export default function Chat() {
           setActiveCompanion(null);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [activeCompanion, setActiveCompanion]);
 
   useEffect(() => {
@@ -112,35 +128,114 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  const handleClear = async () => {
-    if (!activeCompanion) return;
-    if (!window.confirm('Clear all messages for this companion?')) return;
-    await api.delete(`/chat/history/${activeCompanion.id}`);
-    clearHistory();
+  const handleVoice = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setErrorMsg('Speech recognition not supported in this browser.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setInput((prev) => prev + (prev ? ' ' : '') + transcript);
+    };
+    recognition.onerror = (e) => {
+      setErrorMsg(`Voice error: ${e.error}`);
+      setIsListening(false);
+    };
+    recognition.onend = () => setIsListening(false);
+
+    recognition.start();
   };
 
-  const handleDeleteCompanion = async (e, companionId) => {
+  const handleClear = () => {
+    if (!activeCompanion) return;
+    setModalConfig({
+      title: 'Clear Chat History',
+      description: `Are you sure you want to clear all messages for ${activeCompanion.companion_name}? This action is permanent and cannot be undone.`,
+      confirmText: 'Clear History',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/chat/history/${activeCompanion.id}`);
+          clearHistory();
+        } catch (err) {
+          console.error(err);
+          setErrorMsg('Failed to clear chat history.');
+        }
+      }
+    });
+  };
+
+  const handleDeleteCompanion = (e, companionId, name) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this companion and all their messages?')) return;
+    setModalConfig({
+      title: 'Delete Companion',
+      description: `Are you sure you want to delete ${name} and all associated conversation history? This action is permanent.`,
+      confirmText: 'Delete Companion',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/companions/${companionId}`);
+          removeCompanion(companionId);
+        } catch (err) {
+          console.error('Delete companion error:', err);
+        }
+      }
+    });
+  };
+
+  const handleCreateFromTemplate = async (tmpl) => {
+    setErrorMsg('');
+    setLoadingHistory(true);
     try {
-      await api.delete(`/companions/${companionId}`);
-      removeCompanion(companionId);
+      const { data: companion } = await api.post('/companions', {
+        companion_name: tmpl.name,
+        role: tmpl.role,
+        scenario: tmpl.scenario,
+        language: 'tanglish',
+      });
+      const { data: list } = await api.get('/companions');
+      setCompanions(list);
+      setActiveCompanion({ ...companion, gender: tmpl.gender });
     } catch (err) {
-      console.error('Delete companion error:', err);
+      setErrorMsg(err.response?.data?.error || 'Failed to create template companion.');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
-  // Avatar helper
-  const getAvatarChar = (name) => name?.[0]?.toLowerCase() || 'c';
+  // Dynamic beautiful initials gradient helper
+  const getAvatarGradient = (name) => {
+    const charCode = name ? name.charCodeAt(0) : 65;
+    const index = charCode % 5;
+    const gradients = [
+      'linear-gradient(135deg, #14b8a6ff 0%, #14b8a6ff 100%)', // Teal/Lagoon
+      'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)', // Cyan/Sky
+      'linear-gradient(135deg, #4f46e5 0%, #5456e3ff 100%)', // Indigo/Violet
+      'linear-gradient(135deg, #059669 0%, #10b981 100%)', // Emerald/Green
+      'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)', // Purple/Fuchsia
+    ];
+    return { background: gradients[index], color: '#ffffff' };
+  };
+
+  const getAvatarChar = (name) => name?.[0]?.toUpperCase() || 'C';
 
   return (
     <div className="chat-layout">
+      {/* Mobile Sidebar Overlay */}
+      <div
+        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
 
       {/* ============ SIDEBAR ============ */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="brand">
           <div className="brand-top">
-            <div className="mark" style={{ fontSize: '20px' }}>🫂</div>
+            <div className="mark">🫂</div>
             <div>
               <span className="brand-name">Your Soul</span>
               <span className="brand-tag">Feel the connection</span>
@@ -151,27 +246,31 @@ export default function Chat() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            New Companion
+            New Chat
           </button>
         </div>
 
         <div className="list">
-          <div className="list-label">// active</div>
           {companions.length === 0 && (
-            <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-mid)', fontSize: '12px', fontFamily: 'Space Mono, monospace' }}>
-              No companions yet.<br />Create one to start.
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-low)', fontSize: '13px', lineHeight: '1.5' }}>
+              No chats yet.<br />Create one to start.
             </div>
           )}
           {companions.map((c) => (
             <div key={c.id} id={`companion-${c.id}`}
               className={`companion ${activeCompanion?.id === c.id ? 'active' : ''}`}
-              onClick={() => setActiveCompanion(c)}>
-              <div className="avatar av-md av-fill">{getAvatarChar(c.companion_name)}</div>
+              onClick={() => {
+                setActiveCompanion(c);
+                setIsSidebarOpen(false); // Close sidebar on mobile after selection
+              }}>
+              <div className="avatar av-md av-fill" style={getAvatarGradient(c.companion_name)}>
+                {getAvatarChar(c.companion_name)}
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="c-name">{c.companion_name}</div>
                 <div className="c-role">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px', opacity: 0.8 }}>
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                   {c.gender || 'companion'}
                 </div>
@@ -179,9 +278,9 @@ export default function Chat() {
               <button
                 className="btn-delete-companion"
                 title="Delete companion"
-                onClick={(e) => handleDeleteCompanion(e, c.id)}
+                onClick={(e) => handleDeleteCompanion(e, c.id, c.companion_name)}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
                   <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                 </svg>
@@ -191,10 +290,12 @@ export default function Chat() {
         </div>
 
         <div className="user-footer">
-          <div className="avatar av-sm av-line">{getAvatarChar(user?.name)}</div>
+          <div className="avatar av-sm av-line" style={{ border: '1.5px solid var(--accent)', color: 'var(--accent)' }}>
+            {getAvatarChar(user?.name)}
+          </div>
           <span className="u-name">{user?.name}</span>
           <button id="logout-btn" className="btn-logout" onClick={() => { logout(); navigate('/login'); }} title="Logout">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
@@ -207,36 +308,59 @@ export default function Chat() {
       <section className="chat-main">
         {!activeCompanion ? (
           <div className="no-companion">
-            <div className="n-emoji" style={{ fontSize: '24px' }}>🫂</div>
+            <div className="n-emoji">🫂</div>
             <h2>Welcome to Your Soul</h2>
-            <p>Select a companion from the sidebar or create a new one to start chatting.</p>
+            <p>Ready to meet your premium soul sanctuary? Choose a pre-designed template below to start chatting instantly, or customize your own.</p>
+
+            <div className="quickstart-grid">
+              {QUICKSTART_TEMPLATES.map((tmpl) => (
+                <div key={tmpl.name} className="quickstart-card" onClick={() => handleCreateFromTemplate(tmpl)}>
+                  <div className="qs-name">{tmpl.name} • <span style={{ textTransform: 'capitalize', fontWeight: 500, fontSize: '12px' }}>{tmpl.role}</span></div>
+                  <div className="qs-desc">{tmpl.description}</div>
+                </div>
+              ))}
+            </div>
+
             <button className="btn-create" onClick={() => navigate('/setup')}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              Create Companion
+              + Design Custom Companion
             </button>
           </div>
         ) : (
           <>
             {/* Header */}
             <header className="chat-header">
-              <div className="avatar av-md av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
+              <button
+                className="btn-mobile-menu"
+                onClick={() => setIsSidebarOpen(true)}
+                aria-label="Open menu"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+              <div className="avatar av-md av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
+                {getAvatarChar(activeCompanion.companion_name)}
+              </div>
               <div className="ch-info">
                 <div className="ch-name">{activeCompanion.companion_name}</div>
                 <div className="status">
-                  <span className="dot"></span> online · {activeCompanion.gender || 'companion'}
+                  <span className="dot"></span> online · {activeCompanion.gender}
                 </div>
               </div>
               <div className="header-actions">
                 {/* DARK / LIGHT TOGGLE */}
                 <button className="btn-icon" id="themeToggle" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
-                  <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
-                  <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                  <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
+                  <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
                 </button>
                 <button id="clear-history-btn" className="btn-clear" onClick={handleClear}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
                   Clear
                 </button>
               </div>
@@ -245,20 +369,33 @@ export default function Chat() {
             {/* Messages */}
             <div className="messages-area" id="messages">
               {loadingHistory && (
-                <div style={{ textAlign: 'center', color: 'var(--text-mid)', fontSize: '12px', padding: '20px', fontFamily: 'Space Mono, monospace' }}>
-                  Loading messages...
-                </div>
+                <>
+                  <div className="skeleton-row" style={{ alignSelf: 'flex-start' }}>
+                    <div className="skeleton-avatar" />
+                    <div className="skeleton-bubble" style={{ width: '220px' }} />
+                  </div>
+                  <div className="skeleton-row" style={{ alignSelf: 'flex-end', flexDirection: 'row-reverse' }}>
+                    <div className="skeleton-avatar" />
+                    <div className="skeleton-bubble" style={{ width: '180px' }} />
+                  </div>
+                  <div className="skeleton-row" style={{ alignSelf: 'flex-start' }}>
+                    <div className="skeleton-avatar" />
+                    <div className="skeleton-bubble" style={{ width: '260px' }} />
+                  </div>
+                </>
               )}
 
               {!loadingHistory && messages.length === 0 && !isStreaming && (
                 <div className="empty-state">
-                  <div className="e-emoji">{getAvatarChar(activeCompanion.companion_name)}</div>
+                  <div className="e-emoji" style={getAvatarGradient(activeCompanion.companion_name)}>
+                    {getAvatarChar(activeCompanion.companion_name)}
+                  </div>
                   <h3>{activeCompanion.companion_name} is waiting...</h3>
-                  <p>Say something to get started!</p>
+                  <p>Say something to start your ethereal conversation!</p>
                 </div>
               )}
 
-              {(() => {
+              {!loadingHistory && (() => {
                 let lastDateLabel = null;
                 return messages.map((msg, i) => {
                   const dateLabel = getDateGroupLabel(msg.created_at);
@@ -274,7 +411,9 @@ export default function Chat() {
                       )}
                       <div className={`row ${msg.role === 'user' ? 'sent' : 'recv'}`}>
                         {msg.role === 'assistant' && (
-                          <div className="avatar av-sm av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
+                          <div className="avatar av-sm av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
+                            {getAvatarChar(activeCompanion.companion_name)}
+                          </div>
                         )}
                         <div className="msg-wrap">
                           <div className="bubble">{msg.content}</div>
@@ -288,12 +427,14 @@ export default function Chat() {
 
               {isStreaming && (
                 <div className="row recv">
-                  <div className="avatar av-sm av-fill">{getAvatarChar(activeCompanion.companion_name)}</div>
+                  <div className="avatar av-sm av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
+                    {getAvatarChar(activeCompanion.companion_name)}
+                  </div>
                   <div className="msg-wrap">
                     <div className="bubble">
                       {streamingText
-                        ? <>{streamingText}<span style={{ opacity: 0.4 }}>▌</span></>
-                        : <div className="typing-bubble"><div className="t-dot"/><div className="t-dot"/><div className="t-dot"/></div>
+                        ? <>{streamingText}<span style={{ opacity: 0.6, animation: 'pulse 1s infinite' }}>▌</span></>
+                        : <div className="typing-bubble"><div className="t-dot" /><div className="t-dot" /><div className="t-dot" /></div>
                       }
                     </div>
                   </div>
@@ -311,6 +452,36 @@ export default function Chat() {
 
             {/* Input */}
             <footer className="composer">
+              <div className="composer-actions" ref={emojiPickerRef} style={{ position: 'relative' }}>
+                <button className="btn-composer-action" title="Emoji" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                    <line x1="9" y1="9" x2="9.01" y2="9" />
+                    <line x1="15" y1="9" x2="15.01" y2="9" />
+                  </svg>
+                </button>
+                {showEmojiPicker && (
+                  <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 50, marginBottom: '10px' }}>
+                    <EmojiPicker
+                      onEmojiClick={(emoji) => setInput(prev => prev + emoji.emoji)}
+                      theme={document.documentElement.getAttribute('data-theme') || 'dark'}
+                    />
+                  </div>
+                )}
+                <button className="btn-composer-action" title="Attach file">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+                <button className="btn-composer-action" title="Stickers/GIFs" style={{ display: 'none' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
+              </div>
               <div className="field">
                 <input
                   id="message-input"
@@ -323,6 +494,26 @@ export default function Chat() {
                   autoComplete="off"
                 />
               </div>
+
+              {/* Send and Voice Buttons */}
+              <button
+                className={`btn-voice ${isListening ? 'listening' : ''}`}
+                title="Voice Message"
+                aria-label="Voice Message"
+                onClick={handleVoice}
+                style={{
+                  background: isListening ? 'rgba(248, 81, 73, 0.15)' : '',
+                  color: isListening ? '#f85149' : '',
+                  borderColor: isListening ? 'rgba(248, 81, 73, 0.3)' : ''
+                }}
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+              </button>
+
               <button
                 id="send-btn"
                 className="send"
@@ -330,14 +521,38 @@ export default function Chat() {
                 disabled={isStreaming || !input.trim()}
                 aria-label="Send"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 12h13M13 6l6 6-6 6"/>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h13M13 6l6 6-6 6" />
                 </svg>
               </button>
             </footer>
           </>
         )}
       </section>
+
+      {/* ============ CUSTOM CONFIRMATION MODAL ============ */}
+      {modalConfig && (
+        <div className="modal-overlay" onClick={() => setModalConfig(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title">{modalConfig.title}</h3>
+            <p className="modal-description">{modalConfig.description}</p>
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => setModalConfig(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn-danger"
+                onClick={() => {
+                  modalConfig.onConfirm();
+                  setModalConfig(null);
+                }}
+              >
+                {modalConfig.confirmText || 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
