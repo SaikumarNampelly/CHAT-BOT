@@ -1,4 +1,13 @@
-const MODEL = 'gemini-3.5-flash'
+// Models listed in priority order: latest → lighter fallback.
+// Shifts to the next model automatically on quota (429) or overload (503).
+// All models below are active as of June 2026 — no deprecated/shut-down models.
+const MODELS = [
+  'gemini-3.5-flash',        // 🥇 Latest stable — highest intelligence
+  'gemini-3.1-flash-lite',   // 🥈 Stable, fast, high-volume friendly
+  'gemini-2.5-flash',        // 🥉 Price-performance sweet spot
+  'gemini-2.5-flash-lite',   // 🏅 Fastest/lightest — highest quota limits
+];
+
 const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const ROLE_DESCRIPTIONS = {
@@ -146,42 +155,67 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
     },
   };
 
-  const url = `${API_BASE}/${MODEL}:streamGenerateContent?alt=sse`;
-
+  // --- Multi-model fallback ---
+  // Cycle through all models; shift to next on quota (429) or overload (503)
   let response;
-  let maxRetries = 3;
-  let attempt = 0;
-  let delay = 1000;
+  let usedModel = null;
+  const RETRYABLE = new Set([429, 503]);
 
-  while (attempt < maxRetries) {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify(body),
-    });
+  for (let modelIdx = 0; modelIdx < MODELS.length; modelIdx++) {
+    const currentModel = MODELS[modelIdx];
+    const url = `${API_BASE}/${currentModel}:streamGenerateContent?alt=sse`;
 
-    if (response.ok) {
-      break;
+    let delay = 1000;
+    let succeeded = false;
+
+    // Give each model up to 2 attempts (handles transient blips)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      console.log(`[Gemini] Trying model: ${currentModel} (attempt ${attempt + 1})`);
+
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        usedModel = currentModel;
+        succeeded = true;
+        console.log(`[Gemini] ✅ Using model: ${currentModel}`);
+        break;
+      }
+
+      if (RETRYABLE.has(response.status)) {
+        if (attempt === 0) {
+          // Brief pause before same-model retry
+          await new Promise(res => setTimeout(res, delay));
+          delay *= 2;
+        }
+        // After both attempts on this model → fall through to next model
+      } else {
+        // Non-retryable error (400, 401, etc.) → stop immediately
+        break;
+      }
     }
 
-    // Only retry on 503 (Service Unavailable)
-    if (response.status === 503 && attempt < maxRetries - 1) {
-      
-      await new Promise(res => setTimeout(res, delay));
-      delay *= 2; // exponential backoff
-      attempt++;
-    } else {
-      break;
+    if (succeeded) break;
+
+    // Log the model shift
+    if (modelIdx < MODELS.length - 1 && RETRYABLE.has(response.status)) {
+      console.warn(`[Gemini] ⚠️  Model ${currentModel} quota/overload (${response.status}). Shifting to ${MODELS[modelIdx + 1]}...`);
     }
+
+    // If this was a non-retryable error, stop trying other models too
+    if (!RETRYABLE.has(response.status)) break;
   }
 
-  if (!response.ok) {
+  if (!response || !response.ok) {
     const errText = await response.text();
-    console.error('Gemini API error:', response.status, errText);
-    
+    console.error('Gemini API error (all models exhausted):', response.status, errText);
+
     let errorMessage = `Gemini API error ${response.status}`;
     try {
       const errJson = JSON.parse(errText);
@@ -189,12 +223,14 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
         errorMessage = errJson.error.message;
       }
     } catch (e) {
-      // Keep original text if not JSON
       errorMessage = errText;
     }
 
+    if (response.status === 429) {
+      throw new Error('All AI models have reached their quota limit. Please try again later.');
+    }
     if (response.status === 503) {
-      throw new Error('The AI model is currently experiencing high demand. Please try again in a few seconds.');
+      throw new Error('All AI models are currently experiencing high demand. Please try again in a few seconds.');
     }
 
     throw new Error(errorMessage);
