@@ -68,12 +68,18 @@ export default function Chat() {
     api.get('/companions')
       .then(({ data }) => {
         setCompanions(data);
-        if (activeCompanion && data && !data.some(c => c.id === activeCompanion.id)) {
-          setActiveCompanion(null);
+        if (activeCompanion?.id) {
+          const fresh = data.find(c => c.id === activeCompanion.id);
+          if (!fresh) {
+            setActiveCompanion(null);
+          } else if (fresh.companion_name !== activeCompanion.companion_name) {
+            setActiveCompanion(fresh);
+          }
         }
       })
       .catch(() => { });
-  }, [activeCompanion, setActiveCompanion]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!activeCompanion) return;
@@ -158,7 +164,7 @@ export default function Chat() {
     if (!activeCompanion) return;
     setModalConfig({
       title: 'Clear Chat History',
-      description: `Are you sure you want to clear all messages for ${activeCompanion.companion_name}? This action is permanent and cannot be undone.`,
+      description: `Are you sure you want to clear all messages for ${getDispName(activeCompanion.companion_name)}? This action is permanent and cannot be undone.`,
       confirmText: 'Clear History',
       onConfirm: async () => {
         try {
@@ -194,14 +200,14 @@ export default function Chat() {
     setLoadingHistory(true);
     try {
       const { data: companion } = await api.post('/companions', {
-        companion_name: tmpl.name,
+        companion_name: `${tmpl.emoji || '🫂'}|${tmpl.gender || 'female'}|male|${tmpl.name}`,
         role: tmpl.role,
         scenario: tmpl.scenario,
         language: 'tanglish',
       });
       const { data: list } = await api.get('/companions');
       setCompanions(list);
-      setActiveCompanion({ ...companion, gender: tmpl.gender });
+      setActiveCompanion(companion);
     } catch (err) {
       setErrorMsg(err.response?.data?.error || 'Failed to create template companion.');
     } finally {
@@ -209,8 +215,24 @@ export default function Chat() {
     }
   };
 
+  const getDispName = (name) => {
+    if (!name) return '';
+    const parts = name.split('|');
+    if (parts.length >= 4) return parts.slice(3).join('|');
+    if (parts.length >= 2) return parts.slice(1).join('|');
+    return name;
+  };
+
+  const getCompanionGender = (name) => {
+    if (!name) return 'companion';
+    const parts = name.split('|');
+    if (parts.length >= 4) return parts[1];
+    return 'companion';
+  };
+
   // Dynamic beautiful initials gradient helper
-  const getAvatarGradient = (name) => {
+  const getAvatarGradient = (rawName) => {
+    const name = getDispName(rawName);
     const charCode = name ? name.charCodeAt(0) : 65;
     const index = charCode % 5;
     const gradients = [
@@ -223,7 +245,12 @@ export default function Chat() {
     return { background: gradients[index], color: '#ffffff' };
   };
 
-  const getAvatarChar = (name) => name?.[0]?.toUpperCase() || 'C';
+  const getAvatarChar = (name) => {
+    if (!name) return 'C';
+    const parts = name.split('|');
+    if (parts.length >= 2) return parts[0];
+    return name[0]?.toUpperCase() || 'C';
+  };
 
   return (
     <div className="chat-layout">
@@ -269,12 +296,12 @@ export default function Chat() {
                 {getAvatarChar(c.companion_name)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="c-name">{c.companion_name}</div>
+                <div className="c-name">{getDispName(c.companion_name)}</div>
                 <div className="c-role">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px', opacity: 0.8 }}>
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
-                  {c.gender || 'companion'}
+                  {getCompanionGender(c.companion_name)}
                 </div>
               </div>
               <button
@@ -346,9 +373,9 @@ export default function Chat() {
                 {getAvatarChar(activeCompanion.companion_name)}
               </div>
               <div className="ch-info">
-                <div className="ch-name">{activeCompanion.companion_name}</div>
+                <div className="ch-name">{getDispName(activeCompanion.companion_name)}</div>
                 <div className="status">
-                  <span className="dot"></span> online · {activeCompanion.gender}
+                  <span className="dot"></span> online · {getCompanionGender(activeCompanion.companion_name)}
                 </div>
               </div>
               <div className="header-actions">
@@ -388,7 +415,7 @@ export default function Chat() {
                   <div className="e-emoji" style={getAvatarGradient(activeCompanion.companion_name)}>
                     {getAvatarChar(activeCompanion.companion_name)}
                   </div>
-                  <h3>{activeCompanion.companion_name} is waiting...</h3>
+                  <h3>{getDispName(activeCompanion.companion_name)} is waiting...</h3>
                   <p>Say something to start your ethereal conversation!</p>
                 </div>
               )}
@@ -472,7 +499,7 @@ export default function Chat() {
                 <input
                   id="message-input"
                   type="text"
-                  placeholder={`Message ${activeCompanion.companion_name}...`}
+                  placeholder={`Message ${getDispName(activeCompanion.companion_name)}...`}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKey}

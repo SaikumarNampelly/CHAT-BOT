@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
+import EmojiPicker from 'emoji-picker-react';
 
 const GENDER_OPTIONS = [
   { 
@@ -44,23 +45,26 @@ export default function CompanionSetup() {
 
   const [companionName, setCompanionName] = useState('');
   const [gender, setGender]               = useState('female');
+  const [userGender, setUserGender]       = useState('male');
   const [scenario, setScenario]           = useState('');
   const [error, setError]                 = useState('');
   const [loading, setLoading]             = useState(false);
+  const [emoji, setEmoji]                 = useState('🫂');
+  const [showPicker, setShowPicker]       = useState(false);
 
   const handleCreate = async () => {
     if (!companionName.trim()) { setError('Please enter a name for your companion.'); return; }
     setError(''); setLoading(true);
     try {
       const { data: companion } = await api.post('/companions', {
-        companion_name: companionName.trim(),
+        companion_name: `${emoji}|${gender}|${userGender}|${companionName.trim()}`,
         role: 'friend',          // default role — personality driven by gender + scenario
         scenario: scenario.trim(),
         language: 'tanglish',
       });
       const { data: list } = await api.get('/companions');
       setCompanions(list);
-      setActiveCompanion({ ...companion, gender });
+      setActiveCompanion(companion);
       navigate('/chat');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create companion.');
@@ -87,6 +91,44 @@ export default function CompanionSetup() {
 
         {error && <div className="error-msg">⚠️ {error}</div>}
 
+        {/* Profile Emoji Selector */}
+        <div className="setup-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px' }}>
+          <div className="section-label">Profile Icon</div>
+          <div style={{ position: 'relative', marginTop: '10px' }}>
+            <button 
+              type="button"
+              onClick={() => setShowPicker(!showPicker)}
+              title="Choose Profile Emoji"
+              style={{
+                width: '72px',
+                height: '72px',
+                borderRadius: '50%',
+                border: '2px dashed var(--accent)',
+                background: 'var(--bg-2)',
+                fontSize: '36px',
+                display: 'grid',
+                placeItems: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                boxShadow: 'var(--shadow-sm)'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              {emoji}
+            </button>
+            {showPicker && (
+              <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 50, marginTop: '12px' }}>
+                <EmojiPicker 
+                  onEmojiClick={(e) => { setEmoji(e.emoji); setShowPicker(false); }} 
+                  theme={document.documentElement.getAttribute('data-theme') || 'dark'}
+                />
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize: '12px', color: 'var(--text-low)', marginTop: '12px' }}>Click to select emoji</span>
+        </div>
+
         {/* Companion Name */}
         <div className="setup-section">
           <div className="section-label">What's their name?</div>
@@ -111,14 +153,34 @@ export default function CompanionSetup() {
 
         {/* Gender */}
         <div className="setup-section">
-          <div className="section-label">Who are they?</div>
+          <div className="section-label">Who are they? (Companion's Gender)</div>
           <div className="gender-row">
             {GENDER_OPTIONS.map((g) => (
               <button
                 key={g.id}
                 id={`gender-${g.id}`}
+                type="button"
                 className={`gender-btn ${gender === g.id ? 'active' : ''}`}
                 onClick={() => setGender(g.id)}
+              >
+                {g.icon}
+                <span className="g-label">{g.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* User Gender */}
+        <div className="setup-section">
+          <div className="section-label">Your Gender</div>
+          <div className="gender-row">
+            {GENDER_OPTIONS.map((g) => (
+              <button
+                key={g.id}
+                id={`user-gender-${g.id}`}
+                type="button"
+                className={`gender-btn ${userGender === g.id ? 'active' : ''}`}
+                onClick={() => setUserGender(g.id)}
               >
                 {g.icon}
                 <span className="g-label">{g.label}</span>

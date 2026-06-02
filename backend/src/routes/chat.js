@@ -84,11 +84,25 @@ router.post('/message', async (req, res) => {
     res.flushHeaders();
 
     let fullResponse = '';
+    let userGender = 'male';
+    let assistantGender = 'other';
+    let companionName = companion.companion_name;
+
+    if (companion.companion_name && companion.companion_name.includes('|')) {
+      const parts = companion.companion_name.split('|');
+      if (parts.length >= 4) {
+        assistantGender = parts[1];
+        userGender = parts[2];
+        companionName = parts.slice(3).join('|');
+      } else {
+        companionName = parts.slice(1).join('|');
+      }
+    }
 
     // Stream Gemini response
     await streamGeminiResponse(
       {
-        companionName: companion.companion_name,
+        companionName: companionName,
         role: companion.role,
         scenario: companion.scenario,
         language: companion.language,
@@ -96,8 +110,8 @@ router.post('/message', async (req, res) => {
         userName: req.user.name,
         history: reversedHistory,
         userMessage: message,
-        userGender: req.body.userGender || 'male',
-        assistantGender: req.body.assistantGender || 'other',
+        userGender: userGender,
+        assistantGender: assistantGender,
       },
       (chunk) => {
         fullResponse += chunk;
@@ -173,11 +187,25 @@ router.post('/greet/:companionId', async (req, res) => {
     res.flushHeaders();
 
     let fullResponse = '';
+    let userGender = 'male';
+    let assistantGender = 'other';
+    let companionName = companion.companion_name;
+
+    if (companion.companion_name && companion.companion_name.includes('|')) {
+      const parts = companion.companion_name.split('|');
+      if (parts.length >= 4) {
+        assistantGender = parts[1];
+        userGender = parts[2];
+        companionName = parts.slice(3).join('|');
+      } else {
+        companionName = parts.slice(1).join('|');
+      }
+    }
 
     try {
       await streamGeminiResponse(
         {
-          companionName: companion.companion_name,
+          companionName: companionName,
           role: companion.role,
           scenario: companion.scenario,
           language: companion.language,
@@ -185,6 +213,8 @@ router.post('/greet/:companionId', async (req, res) => {
           userName: req.user.name,
           history: [],
           userMessage: '__GREET__',
+          userGender: userGender,
+          assistantGender: assistantGender,
         },
         (chunk) => {
           fullResponse += chunk;

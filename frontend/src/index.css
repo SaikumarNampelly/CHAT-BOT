@@ -458,15 +458,21 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 
 .setup-card {
   width: 100%;
-  max-width: 520px;
+  max-height: 96dvh;
+  overflow-y: auto;
+  max-width: 440px;
   background: var(--panel-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--panel-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-xl) var(--space-lg);
+  padding: var(--space-lg) var(--space-lg);
   transition: all var(--transition-normal);
   box-shadow: var(--panel-glow), var(--shadow-lg);
+  scrollbar-width: none;
+}
+.setup-card::-webkit-scrollbar {
+  display: none;
 }
 
 .setup-header {
@@ -1521,5 +1527,15 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   }
   .row.recv .avatar {
     display: none;
+  }
+  .setup-page {
+    padding: 0;
+    align-items: flex-start;
+  }
+  .setup-card {
+    padding: var(--space-lg) var(--space-md);
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
   }
 }
