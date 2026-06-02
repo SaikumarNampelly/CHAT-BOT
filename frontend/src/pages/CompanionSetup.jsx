@@ -139,7 +139,7 @@ export default function CompanionSetup() {
         </div>
 
         <button id="create-companion-btn" className="btn-primary" onClick={handleCreate} disabled={loading}>
-          {loading ? 'Setting up...' : `Start chatting with ${companionName || 'your companion'} →`}
+          {loading ? 'Setting up...' : `Start chatting with ${companionName || 'your person'} →`}
         </button>
       </div>
     </div>

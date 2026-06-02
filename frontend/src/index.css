@@ -885,6 +885,9 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   gap: 6px;
   margin-top: 4px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .dot {
   width: 8px;
@@ -1000,6 +1003,7 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   line-height: 1.55;
   word-wrap: break-word;
   box-shadow: var(--shadow-sm);
+  font-family: sans-serif;
 }
 .row.recv .bubble {
   background: var(--panel-bg);
@@ -1467,14 +1471,33 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   }
   .composer {
     padding: var(--space-xs) var(--space-xs) calc(var(--space-xs) + env(safe-area-inset-bottom));
+    gap: 8px;
   }
   .chat-header {
     padding: var(--space-sm);
   }
   .ch-name {
-    font-size: var(--fs-xs);
+    font-size: var(--fs-base);
   }
   .btn-clear span {
+    display: none;
+  }
+  .mobile-hide {
+    display: none !important;
+  }
+  .btn-voice, .send {
+    width: 40px;
+    height: 40px;
+  }
+  .btn-voice svg, .send svg {
+    width: 18px;
+    height: 18px;
+  }
+  .btn-composer-action {
+    width: 36px;
+    height: 36px;
+  }
+  .row.recv .avatar {
     display: none;
   }
 }

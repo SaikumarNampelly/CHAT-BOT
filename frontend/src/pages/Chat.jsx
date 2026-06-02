@@ -6,6 +6,8 @@ import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
 import EmojiPicker from 'emoji-picker-react';
 
+const QUICKSTART_TEMPLATES = [];
+
 function timeStr(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -322,11 +324,7 @@ export default function Chat() {
             </div>
 
             <button className="btn-create" onClick={() => navigate('/setup')}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px' }}>
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              + Design Custom Companion
+              + New Chat
             </button>
           </div>
         ) : (
@@ -469,7 +467,7 @@ export default function Chat() {
                     />
                   </div>
                 )}
-                <button className="btn-composer-action" title="Attach file">
+                <button className="btn-composer-action mobile-hide" title="Attach file">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                   </svg>
