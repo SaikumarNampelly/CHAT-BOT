@@ -359,7 +359,7 @@ export default function Chat() {
                 </button>
                 <button id="clear-history-btn" className="btn-clear" onClick={handleClear}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
-                  Clear
+                  <span className="mobile-hide">Clear</span>
                 </button>
               </div>
             </header>
@@ -467,18 +467,6 @@ export default function Chat() {
                     />
                   </div>
                 )}
-                <button className="btn-composer-action mobile-hide" title="Attach file">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
-                </button>
-                <button className="btn-composer-action" title="Stickers/GIFs" style={{ display: 'none' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                </button>
               </div>
               <div className="field">
                 <input

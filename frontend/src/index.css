@@ -258,6 +258,7 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 /* ─── Auth (Login/Register) Pages ────────────────────────────── */
 .auth-page {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -444,6 +445,7 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 /* ─── Setup Page ────────────────────────────────────────────── */
 .setup-page {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   padding: var(--space-xl) var(--space-lg);
   display: flex;
@@ -622,6 +624,7 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   display: grid;
   grid-template-columns: 310px 1fr;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   position: relative;
   z-index: 1;
@@ -853,6 +856,7 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
   background: var(--bg);
   transition: background 0.35s;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
@@ -1204,6 +1208,8 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 }
 .field input {
   flex: 1;
+  min-width: 0;
+  width: 100%;
   background: none;
   border: none;
   outline: none;
@@ -1474,13 +1480,29 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
     gap: 8px;
   }
   .chat-header {
-    padding: var(--space-sm);
+    padding: 10px 8px;
+    gap: 8px;
   }
   .ch-name {
     font-size: var(--fs-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
-  .btn-clear span {
-    display: none;
+  .header-actions {
+    gap: 4px;
+  }
+  .btn-mobile-menu {
+    width: 38px;
+    height: 38px;
+    margin-right: 0;
+  }
+  .av-md {
+    width: 38px;
+    height: 38px;
+  }
+  .btn-icon, .btn-clear {
+    padding: 8px;
   }
   .mobile-hide {
     display: none !important;
