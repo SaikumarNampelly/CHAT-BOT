@@ -1060,13 +1060,10 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 
 /* Typing Bubble */
 .typing-bubble {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius-md);
-  padding: 12px 18px;
   display: flex;
-  gap: 5px;
+  gap: 6px;
   align-items: center;
+  height: 20px;
 }
 .t-dot {
   width: 6px;
