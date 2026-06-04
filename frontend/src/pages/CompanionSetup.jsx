@@ -44,7 +44,6 @@ export default function CompanionSetup() {
   const { toggleTheme } = useThemeStore();
 
   const [companionName, setCompanionName] = useState('');
-  const [gender, setGender]               = useState('female');
   const [userGender, setUserGender]       = useState('male');
   const [scenario, setScenario]           = useState('');
   const [error, setError]                 = useState('');
@@ -55,9 +54,13 @@ export default function CompanionSetup() {
   const handleCreate = async () => {
     if (!companionName.trim()) { setError('Please enter a name for your companion.'); return; }
     setError(''); setLoading(true);
+    
+    // Derive opposite companion gender based on user's gender
+    const companionGender = userGender === 'male' ? 'female' : (userGender === 'female' ? 'male' : 'other');
+
     try {
       const { data: companion } = await api.post('/companions', {
-        companion_name: `${emoji}|${gender}|${userGender}|${companionName.trim()}`,
+        companion_name: `${emoji}|${companionGender}|${userGender}|${companionName.trim()}`,
         role: 'friend',          // default role — personality driven by gender + scenario
         scenario: scenario.trim(),
         language: 'tanglish',
@@ -151,28 +154,9 @@ export default function CompanionSetup() {
           </div>
         </div>
 
-        {/* Gender */}
+        {/* User Gender (WHO ARE YOU?) */}
         <div className="setup-section">
-          <div className="section-label">Who are they? (Companion's Gender)</div>
-          <div className="gender-row">
-            {GENDER_OPTIONS.map((g) => (
-              <button
-                key={g.id}
-                id={`gender-${g.id}`}
-                type="button"
-                className={`gender-btn ${gender === g.id ? 'active' : ''}`}
-                onClick={() => setGender(g.id)}
-              >
-                {g.icon}
-                <span className="g-label">{g.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* User Gender */}
-        <div className="setup-section">
-          <div className="section-label">Your Gender</div>
+          <div className="section-label">WHO ARE YOU?</div>
           <div className="gender-row">
             {GENDER_OPTIONS.map((g) => (
               <button

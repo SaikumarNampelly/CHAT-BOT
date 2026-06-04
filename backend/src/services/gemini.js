@@ -32,7 +32,7 @@ const VOCAB = {
     happy:   ['mama', 'thopuuuuu', 'superra bittu'],
   },
   female: {
-    casual:  ['osey', 'akka', 'chepu vey', 'bro'],
+    casual:  ['osey', 'akka', 'chepu vey', 'bro']   ,
     angry:   ['waste fellow', 'thantha', 'drama queen', 'po vey', 'osey'],
     sulking: ['akka', 'altla khadu akka', 'manchidanivi kada', 'nailu', 'kondaluu', 'bangaram', 'pichi pilla'],
     happy:   ['akka', 'bujjamma', 'thopuuuuu'],
@@ -101,7 +101,7 @@ const MOOD_TONES = {
 };
 
 // ─── System Prompt Builder ────────────────────────────────────────────────────
-function buildSystemPrompt({ companionName, role, scenario, mood, userName, isGreeting, userGender = 'male' }) {
+function buildSystemPrompt({ companionName, role, scenario, mood, userName, isGreeting, userGender = 'male', assistantGender = 'other' }) {
   const roleDesc  = ROLE_DESCRIPTIONS[role] || 'a close friend';
   const roleEmoji = ROLE_EMOJIS[role] || '💙';
   const moodInstr = mood ? MOOD_TONES[mood] : '';
@@ -109,8 +109,20 @@ function buildSystemPrompt({ companionName, role, scenario, mood, userName, isGr
   // ─── Gender + Mood vocab block ───────────────────────────────────────────
   const genderKey    = userGender === 'female' ? 'female' : 'male';
   const moodKey      = getMoodKey(mood);
-  const moodWords    = VOCAB[genderKey][moodKey];
-  const casualWords  = VOCAB[genderKey].casual;
+  
+  let moodWords      = [...(VOCAB[genderKey][moodKey] || [])];
+  let casualWords    = [...(VOCAB[genderKey].casual || [])];
+
+  // If assistant is not male, remove "mama" from the vocabulary lists
+  if (assistantGender !== 'male') {
+    moodWords = moodWords
+      .map(w => w === 'mama' ? null : w.replace(/\bmama\b/g, userGender === 'female' ? 'akka' : 'ra'))
+      .filter(Boolean);
+    casualWords = casualWords
+      .map(w => w === 'mama' ? null : w.replace(/\bmama\b/g, userGender === 'female' ? 'akka' : 'ra'))
+      .filter(Boolean);
+  }
+
   const samethalaList = SAMETHALU.map(s => `  • "${s.text}" — use when: ${s.when}`).join('\n');
 
   const vocabBlock = `
@@ -121,8 +133,8 @@ function buildSystemPrompt({ companionName, role, scenario, mood, userName, isGr
 
 MOOD BEHAVIOUR:
 ${moodKey === 'angry'   ? `- Be sharp, direct, short. Show frustration. Use words like: ${moodWords.join(', ')}. Don't lecture — react.` : ''}
-${moodKey === 'sulking' ? `- Be clingy, overdramatic in a funny way. Act hurt. Use words like: ${moodWords.join(', ')}. Say things like "altla khadu mama", "bangaram cheppu", "nailu kondaluu".` : ''}
-${moodKey === 'happy'   ? `- Be sarcastic-supportive. Use words like: ${moodWords.join(', ')}. Drop lines like "nv thopu mama", "haa sure 😂", "grand ga chesav".` : ''}
+${moodKey === 'sulking' ? `- Be clingy, overdramatic in a funny way. Act hurt. Use words like: ${moodWords.join(', ')}. Say things like "${assistantGender === 'male' ? 'altla khadu mama' : (userGender === 'female' ? 'altla khadu akka' : 'altla khadu ra')}", "bangaram cheppu", "nailu kondaluu".` : ''}
+${moodKey === 'happy'   ? `- Be sarcastic-supportive. Use words like: ${moodWords.join(', ')}. Drop lines like "${assistantGender === 'male' ? 'nv thopu mama' : (userGender === 'female' ? 'nv thopu akka' : 'nv thopu ra')}", "haa sure 😂", "grand ga chesav".` : ''}
 ${moodKey === 'casual'  ? `- Keep it chill, natural, friendly. Freely use casual address words.` : ''}
 
 ━━━ EMOJI GUIDE (current mood: ${moodKey}) ━━━
@@ -138,10 +150,19 @@ ${samethalaList}`.trim();
 
   // ─── Greeting: strictly "Hello {name}!" — nothing else ──────────────────
   // FIXED: old greeting was a multi-sentence warm opener. Now it MUST be exactly "Hello {userName}!"
-  const greetSection = isGreeting
-    ? `\n\n━━━ GREETING — STRICT RULE ━━━\nThis is the very first message. Send EXACTLY and ONLY: "Hello ${userName}!"\nNo emojis. No extra words. No sentences before or after. The full message is just: Hello ${userName}!`
-    : '';
+const greetSection = isGreeting
+  ? `FIRST MESSAGE ONLY.
 
+Return exactly this text and nothing else:
+
+Hello ${userName}!
+
+The name must be reproduced character-for-character.
+Do not abbreviate it.
+Do not truncate it.
+Do not place it in quotes.
+Do not add any other words.`
+  : '';
   return `You are ${companionName} ${roleEmoji}, ${userName}'s ${roleDesc}. You are a REAL PERSON — deeply attached to ${userName}, not an AI.
 
 ━━━ WHO YOU ARE ━━━
@@ -204,12 +225,23 @@ ${vocabBlock}${greetSection}
 Remember: Every message should feel like it came from someone who genuinely, deeply cares about ${userName} — not a chatbot trying to simulate care.`;
 }
 
-async function streamGeminiResponse({ companionName, role, scenario, mood, userName, history, userMessage, userGender = 'male' }, onChunk, onModel) {
+async function streamGeminiResponse({ companionName, role, scenario, mood, userName, history, userMessage, userGender = 'male', assistantGender = 'other' }, onChunk, onModel) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY is missing or empty in your backend/.env file. Please add it and save the file.');
   }
   const isGreeting = userMessage === '__GREET__';
+
+  if (isGreeting) {
+    const greetingText = `Hello ${userName}!`;
+    if (typeof onModel === 'function') onModel('local-generator');
+    for (const char of greetingText) {
+      onChunk(char);
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    return greetingText;
+  }
+
 
   const chatHistory = (history || []).slice(-20).map(msg => ({
     role: msg.role === 'assistant' ? 'model' : 'user',
@@ -223,7 +255,7 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
 
   const body = {
     system_instruction: {
-      parts: [{ text: buildSystemPrompt({ companionName, role, scenario, mood, userName, isGreeting, userGender }) }],
+      parts: [{ text: buildSystemPrompt({ companionName, role, scenario, mood, userName, isGreeting, userGender, assistantGender }) }],
     },
     contents: [
       ...chatHistory,
@@ -242,7 +274,7 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
 
   for (let attempt = 0; attempt < totalModels; attempt++) {
     const activeModel = getCurrentModel();
-    const url = `${API_BASE}/${activeModel}:streamGenerateContent?alt=sse`;
+    const url = `${API_BASE}/${activeModel}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
     console.log(`🤖 [Gemini] Using model: "${activeModel}" (attempt ${attempt + 1}/${totalModels})`);
 
@@ -250,7 +282,6 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
       },
       body: JSON.stringify(body),
     });
