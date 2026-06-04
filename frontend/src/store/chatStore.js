@@ -32,6 +32,9 @@ export const useChatStore = create(
             isStreaming: false,
             streamingText: '',
           });
+        } else {
+          // Stream ended with no text — still stop the spinner
+          set({ isStreaming: false, streamingText: '' });
         }
       },
       cancelStreaming: () => set({ isStreaming: false, streamingText: '' }),

@@ -982,8 +982,8 @@ h1, h2, h3, .brand-name, .ch-name, .c-name, .auth-title, .setup-header h2 {
 
 .row {
   display: flex;
-  gap: 12px;
-  align-items: flex-end;
+  gap: 10px;
+  align-items: center ;
   max-width: 65%;
   animation: rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }

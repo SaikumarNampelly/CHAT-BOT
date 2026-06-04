@@ -13,10 +13,10 @@ module.exports = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Verify user actually exists in the database
+    // Re-fetch user from DB — always use fresh name, not stale JWT payload
     const { data: user, error } = await supabase
       .from('users')
-      .select('id')
+      .select('id, name, email')
       .eq('id', decoded.id)
       .single();
 
@@ -24,7 +24,8 @@ module.exports = async (req, res, next) => {
       return res.status(401).json({ error: 'Unauthorized — user does not exist in database' });
     }
 
-    req.user = decoded; // { id, email, name }
+    // Merge decoded JWT with fresh DB values — DB name/email always wins
+    req.user = { ...decoded, name: user.name, email: user.email };
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Unauthorized — invalid or expired token' });

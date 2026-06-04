@@ -91,11 +91,20 @@ export default function Chat() {
         // If no history, auto-send companion's first greeting
         if ((!data || data.length === 0) && !greetingTriggered.current[activeCompanion.id]) {
           greetingTriggered.current[activeCompanion.id] = true;
+          const companionId = activeCompanion.id;
           startStreaming();
           streamGreet(
-            { companionId: activeCompanion.id },
+            { companionId },
             (chunk) => appendStreamChunk(chunk),
-            () => finishStreaming(),
+            () => {
+              finishStreaming();
+              // Re-fetch from DB after greeting saved — handles race/skip cases
+              setTimeout(() => {
+                api.get(`/chat/history/${companionId}`)
+                  .then(({ data: fresh }) => { if (fresh?.length) setMessages(fresh); })
+                  .catch(() => {});
+              }, 400);
+            },
             (err) => {
               console.error('Greet error:', err);
               setErrorMsg(err);

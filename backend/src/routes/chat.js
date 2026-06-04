@@ -116,6 +116,9 @@ router.post('/message', async (req, res) => {
       (chunk) => {
         fullResponse += chunk;
         res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+      },
+      (model) => {
+        res.write(`data: ${JSON.stringify({ model })}\n\n`);
       }
     );
 
@@ -154,7 +157,7 @@ router.post('/greet/:companionId', async (req, res) => {
 
     if (cErr || !companion) return res.status(403).json({ error: 'Companion not found.' });
 
-    // Check if any messages already exist — don't double-greet
+    // Check if any messages already exist (including in-progress placeholders) — don't double-greet
     const { data: existing } = await supabase
       .from('messages')
       .select('id')
@@ -219,6 +222,9 @@ router.post('/greet/:companionId', async (req, res) => {
         (chunk) => {
           fullResponse += chunk;
           res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
+        },
+        (model) => {
+          res.write(`data: ${JSON.stringify({ model })}\n\n`);
         }
       );
 

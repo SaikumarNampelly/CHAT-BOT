@@ -70,6 +70,7 @@ export async function streamMessage({ companionId, message, mood }, onChunk, onD
         if (line.startsWith('data: ')) {
           try {
             const json = JSON.parse(line.slice(6));
+            if (json.model) console.log(`🤖 [AI Model Shift] Currently using model: ${json.model}`);
             if (json.chunk) onChunk(json.chunk);
             if (json.done) onDone();
             if (json.error) onError(json.error);
@@ -126,6 +127,7 @@ export async function streamGreet({ companionId }, onChunk, onDone, onError) {
         if (line.startsWith('data: ')) {
           try {
             const json = JSON.parse(line.slice(6));
+            if (json.model) console.log(`🤖 [AI Model Shift] Currently using model: ${json.model}`);
             if (json.chunk) onChunk(json.chunk);
             if (json.done) onDone();
             if (json.error) onError(json.error);
