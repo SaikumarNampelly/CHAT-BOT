@@ -7,6 +7,7 @@ export const useThemeStore = create((set) => {
 
   // Apply the theme to the document element immediately on load
   document.documentElement.setAttribute('data-theme', initialTheme);
+  document.documentElement.classList.toggle('dark', initialTheme === 'dark');
 
   return {
     theme: initialTheme,
@@ -14,11 +15,13 @@ export const useThemeStore = create((set) => {
       const nextTheme = state.theme === 'dark' ? 'light' : 'dark';
       localStorage.setItem('your-soul-theme', nextTheme);
       document.documentElement.setAttribute('data-theme', nextTheme);
+      document.documentElement.classList.toggle('dark', nextTheme === 'dark');
       return { theme: nextTheme };
     }),
     setTheme: (theme) => {
       localStorage.setItem('your-soul-theme', theme);
       document.documentElement.setAttribute('data-theme', theme);
+      document.documentElement.classList.toggle('dark', theme === 'dark');
       set({ theme });
     }
   };

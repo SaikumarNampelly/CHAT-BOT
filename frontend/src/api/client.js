@@ -48,8 +48,14 @@ export async function streamMessage({ companionId, message, mood }, onChunk, onD
       body: JSON.stringify({ companionId, message, mood }),
     });
 
+    if (response.status === 401) {
+      useAuthStore.getState().logout();
+      onError('Session expired. Please log in again.');
+      return;
+    }
+
     if (!response.ok) {
-      const err = await response.json();
+      const err = await response.json().catch(() => ({ error: 'Failed to get response' }));
       onError(err.error || 'Failed to get response');
       return;
     }
@@ -74,7 +80,9 @@ export async function streamMessage({ companionId, message, mood }, onChunk, onD
             if (json.chunk) onChunk(json.chunk);
             if (json.done) onDone();
             if (json.error) onError(json.error);
-          } catch {}
+          } catch {
+            // Ignore incomplete SSE chunks or non-JSON lines
+          }
         }
       }
     }
@@ -105,6 +113,12 @@ export async function streamGreet({ companionId }, onChunk, onDone, onError) {
       return;
     }
 
+    if (response.status === 401) {
+      useAuthStore.getState().logout();
+      onError('Session expired. Please log in again.');
+      return;
+    }
+
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
       onError(err.error || 'Failed to get greeting');
@@ -131,7 +145,9 @@ export async function streamGreet({ companionId }, onChunk, onDone, onError) {
             if (json.chunk) onChunk(json.chunk);
             if (json.done) onDone();
             if (json.error) onError(json.error);
-          } catch {}
+          } catch {
+            // Ignore incomplete SSE chunks or non-JSON lines
+          }
         }
       }
     }

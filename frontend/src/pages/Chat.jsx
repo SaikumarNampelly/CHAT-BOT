@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Fragment, useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { streamMessage, streamGreet } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
 import EmojiPicker from 'emoji-picker-react';
-
-const QUICKSTART_TEMPLATES = [];
 
 function timeStr(iso) {
   if (!iso) return '';
@@ -22,19 +20,21 @@ function getDateGroupLabel(isoString) {
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
+  const dateFormatted = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
   if (targetDate.getTime() === today.getTime()) {
-    return 'Today';
+    return `Today, ${dateFormatted}`;
   } else if (targetDate.getTime() === yesterday.getTime()) {
-    return 'Yesterday';
+    return `Yesterday, ${dateFormatted}`;
   } else {
-    return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+    return dateFormatted;
   }
 }
 
 export default function Chat() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const { toggleTheme } = useThemeStore();
+  const { theme, toggleTheme } = useThemeStore();
   const {
     companions, activeCompanion,
     messages, isStreaming, streamingText,
@@ -44,16 +44,21 @@ export default function Chat() {
   } = useChatStore();
 
   const [input, setInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [modalConfig, setModalConfig] = useState(null); // { title, description, confirmText, onConfirm }
+  const [modalConfig, setModalConfig] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isListening, setIsListening] = useState(false);
+
   const bottomRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const recognitionRef = useRef(null);
   const greetingTriggered = useRef({});
 
+  // Close emoji picker on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
@@ -64,6 +69,19 @@ export default function Chat() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Keyboard shortcut: Ctrl + K or Cmd + K to focus search
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Fetch companions list
   useEffect(() => {
     api.get('/companions')
       .then(({ data }) => {
@@ -81,14 +99,19 @@ export default function Chat() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Load chat history and trigger greeting if new
   useEffect(() => {
-    if (!activeCompanion) return;
-    setLoadingHistory(true);
-    setErrorMsg('');
-    api.get(`/chat/history/${activeCompanion.id}`)
-      .then(({ data }) => {
-        setMessages(data);
-        // If no history, auto-send companion's first greeting
+    if (!activeCompanion?.id) return;
+    let isMounted = true;
+
+    const loadHistoryAndGreet = async () => {
+      setLoadingHistory(true);
+      setErrorMsg('');
+      try {
+        const { data } = await api.get(`/chat/history/${activeCompanion.id}`);
+        if (!isMounted) return;
+        setMessages(data || []);
+
         if ((!data || data.length === 0) && !greetingTriggered.current[activeCompanion.id]) {
           greetingTriggered.current[activeCompanion.id] = true;
           const companionId = activeCompanion.id;
@@ -96,28 +119,27 @@ export default function Chat() {
           streamGreet(
             { companionId },
             (chunk) => appendStreamChunk(chunk),
-            () => {
-              finishStreaming();
-              // Re-fetch from DB after greeting saved — handles race/skip cases
-              setTimeout(() => {
-                api.get(`/chat/history/${companionId}`)
-                  .then(({ data: fresh }) => { if (fresh?.length) setMessages(fresh); })
-                  .catch(() => {});
-              }, 400);
-            },
+            () => finishStreaming(),
             (err) => {
               console.error('Greet error:', err);
               setErrorMsg(err);
               cancelStreaming();
-              greetingTriggered.current[activeCompanion.id] = false;
+              greetingTriggered.current[companionId] = false;
             }
           );
         }
-      })
-      .catch(() => setMessages([]))
-      .finally(() => setLoadingHistory(false));
-  }, [activeCompanion?.id]);
+      } catch {
+        if (isMounted) setMessages([]);
+      } finally {
+        if (isMounted) setLoadingHistory(false);
+      }
+    };
 
+    loadHistoryAndGreet();
+    return () => { isMounted = false; };
+  }, [activeCompanion?.id, appendStreamChunk, cancelStreaming, finishStreaming, setMessages, startStreaming]);
+
+  // Scroll to bottom on new message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
@@ -139,10 +161,13 @@ export default function Chat() {
         cancelStreaming();
       }
     );
-  }, [input, isStreaming, activeCompanion]);
+  }, [input, isStreaming, activeCompanion, addMessage, appendStreamChunk, cancelStreaming, finishStreaming, startStreaming]);
 
   const handleKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   const handleVoice = () => {
@@ -151,7 +176,15 @@ export default function Chat() {
       setErrorMsg('Speech recognition not supported in this browser.');
       return;
     }
+
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
     const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -164,7 +197,10 @@ export default function Chat() {
       setErrorMsg(`Voice error: ${e.error}`);
       setIsListening(false);
     };
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
 
     recognition.start();
   };
@@ -173,7 +209,7 @@ export default function Chat() {
     if (!activeCompanion) return;
     setModalConfig({
       title: 'Clear Chat History',
-      description: `Are you sure you want to clear all messages for ${getDispName(activeCompanion.companion_name)}? This action is permanent and cannot be undone.`,
+      description: `Are you sure you want to clear all messages for ${getDispName(activeCompanion.companion_name)}? This action is permanent.`,
       confirmText: 'Clear History',
       onConfirm: async () => {
         try {
@@ -189,9 +225,10 @@ export default function Chat() {
 
   const handleDeleteCompanion = (e, companionId, name) => {
     e.stopPropagation();
+    const displayName = getDispName(name);
     setModalConfig({
       title: 'Delete Companion',
-      description: `Are you sure you want to delete ${name} and all associated conversation history? This action is permanent.`,
+      description: `Are you sure you want to delete ${displayName} and all conversation history?`,
       confirmText: 'Delete Companion',
       onConfirm: async () => {
         try {
@@ -204,26 +241,6 @@ export default function Chat() {
     });
   };
 
-  const handleCreateFromTemplate = async (tmpl) => {
-    setErrorMsg('');
-    setLoadingHistory(true);
-    try {
-      const { data: companion } = await api.post('/companions', {
-        companion_name: `${tmpl.emoji || '🫂'}|${tmpl.gender || 'female'}|male|${tmpl.name}`,
-        role: tmpl.role,
-        scenario: tmpl.scenario,
-        language: 'tanglish',
-      });
-      const { data: list } = await api.get('/companions');
-      setCompanions(list);
-      setActiveCompanion(companion);
-    } catch (err) {
-      setErrorMsg(err.response?.data?.error || 'Failed to create template companion.');
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
   const getDispName = (name) => {
     if (!name) return '';
     const parts = name.split('|');
@@ -233,25 +250,23 @@ export default function Chat() {
   };
 
   const getCompanionGender = (name) => {
-    if (!name) return 'companion';
+    if (!name) return 'Companion';
     const parts = name.split('|');
-    if (parts.length >= 4) return parts[1];
-    return 'companion';
+    if (parts.length >= 4) return parts[1] || 'Companion';
+    return 'Companion';
   };
 
-  // Dynamic beautiful initials gradient helper
   const getAvatarGradient = (rawName) => {
     const name = getDispName(rawName);
     const charCode = name ? name.charCodeAt(0) : 65;
-    const index = charCode % 5;
     const gradients = [
-      'linear-gradient(135deg, #14b8a6ff 0%, #14b8a6ff 100%)', // Teal/Lagoon
-      'linear-gradient(135deg, #0284c7 0%, #06b6d4 100%)', // Cyan/Sky
-      'linear-gradient(135deg, #4f46e5 0%, #5456e3ff 100%)', // Indigo/Violet
-      'linear-gradient(135deg, #059669 0%, #10b981 100%)', // Emerald/Green
-      'linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%)', // Purple/Fuchsia
+      'from-teal-500 to-emerald-600',
+      'from-sky-500 to-blue-600',
+      'from-indigo-500 to-purple-600',
+      'from-emerald-500 to-teal-700',
+      'from-violet-500 to-indigo-700',
     ];
-    return { background: gradients[index], color: '#ffffff' };
+    return gradients[charCode % gradients.length];
   };
 
   const getAvatarChar = (name) => {
@@ -261,171 +276,322 @@ export default function Chat() {
     return name[0]?.toUpperCase() || 'C';
   };
 
+  const filteredCompanions = companions.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const displayName = getDispName(c.companion_name).toLowerCase();
+    return displayName.includes(searchQuery.toLowerCase());
+  });
+
   return (
-    <div className="chat-layout">
+    <div className="relative flex h-screen w-full bg-slate-100/60 dark:bg-[#060a0a] overflow-hidden">
       {/* Mobile Sidebar Overlay */}
-      <div
-        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`}
-        onClick={() => setIsSidebarOpen(false)}
-      />
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 md:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
 
       {/* ============ SIDEBAR ============ */}
-      <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="brand">
-          <div className="brand-top">
-            <div className="mark">🫂</div>
-            <div>
-              <span className="brand-name">Your Soul</span>
-              <span className="brand-tag">Feel the connection</span>
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-40 w-80 md:w-80 flex flex-col bg-white/95 dark:bg-[#090f0e]/95 border-r border-slate-200 dark:border-teal-500/15 backdrop-blur-xl transition-transform duration-300 ease-in-out ${
+          isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Brand & New Chat */}
+        <div className="p-4 border-b border-slate-200/80 dark:border-teal-500/10 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </div>
+              <div>
+                <span className="block font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-tight">Your Soul</span>
+                <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-medium tracking-wide">Feel the connection</span>
+              </div>
             </div>
+
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              ✕
+            </button>
           </div>
-          <button id="new-companion-btn" className="btn-new" onClick={() => navigate('/setup')}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+
+          <button
+            id="new-companion-btn"
+            onClick={() => navigate('/setup')}
+            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 transition-all cursor-pointer"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
             New Chat
           </button>
+
+          {/* Search bar with shortcut */}
+          <div className="relative flex items-center">
+            <svg className="absolute left-3 w-3.5 h-3.5 text-slate-400 dark:text-teal-500/60 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search chats..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-16 py-1.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50 dark:bg-[#060a0a]/60 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+            />
+            <span className="absolute right-2 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-200/70 dark:bg-teal-950/60 text-slate-500 dark:text-teal-400/80 border border-slate-300/50 dark:border-teal-500/20 pointer-events-none">
+              Ctrl+K
+            </span>
+          </div>
         </div>
 
-        <div className="list">
-          {companions.length === 0 && (
-            <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-low)', fontSize: '13px', lineHeight: '1.5' }}>
-              No chats yet.<br />Create one to start.
+        {/* Section Heading */}
+        <div className="px-4 py-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          <span>Chats</span>
+          <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-teal-950/50 text-slate-600 dark:text-teal-400">
+            {filteredCompanions.length}
+          </span>
+        </div>
+
+        {/* Companion List */}
+        <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
+          {filteredCompanions.length === 0 && (
+            <div className="text-center py-10 px-4 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line leading-relaxed">
+              {searchQuery ? 'No chats found matching search.' : 'No chats yet.\nCreate one to start.'}
             </div>
           )}
-          {companions.map((c) => (
-            <div key={c.id} id={`companion-${c.id}`}
-              className={`companion ${activeCompanion?.id === c.id ? 'active' : ''}`}
-              onClick={() => {
-                setActiveCompanion(c);
-                setIsSidebarOpen(false); // Close sidebar on mobile after selection
-              }}>
-              <div className="avatar av-md av-fill" style={getAvatarGradient(c.companion_name)}>
-                {getAvatarChar(c.companion_name)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="c-name">{getDispName(c.companion_name)}</div>
-                <div className="c-role">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '5px', opacity: 0.8 }}>
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                  {getCompanionGender(c.companion_name)}
-                </div>
-              </div>
-              <button
-                className="btn-delete-companion"
-                title="Delete companion"
-                onClick={(e) => handleDeleteCompanion(e, c.id, c.companion_name)}
+
+          {filteredCompanions.map((c) => {
+            const isActive = activeCompanion?.id === c.id;
+            return (
+              <div
+                key={c.id}
+                id={`companion-${c.id}`}
+                onClick={() => {
+                  setActiveCompanion(c);
+                  setIsSidebarOpen(false);
+                }}
+                className={`group relative flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
+                  isActive
+                    ? 'bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/30 text-teal-950 dark:text-white shadow-xs'
+                    : 'hover:bg-slate-100 dark:hover:bg-[#111e1c]/60 text-slate-700 dark:text-slate-300 border border-transparent'
+                }`}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-              </button>
-            </div>
-          ))}
+                {/* Avatar */}
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarGradient(c.companion_name)} flex items-center justify-center text-white text-base font-semibold shadow-xs shrink-0`}>
+                  {getAvatarChar(c.companion_name)}
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs sm:text-sm truncate text-slate-800 dark:text-slate-100">
+                      {getDispName(c.companion_name)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                      01:32 PM
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0 animate-pulse"></span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                      Online • {getCompanionGender(c.companion_name)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Delete button */}
+                <button
+                  type="button"
+                  title="Delete companion"
+                  onClick={(e) => handleDeleteCompanion(e, c.id, c.companion_name)}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all shrink-0 cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
+            );
+          })}
         </div>
 
-        <div className="user-footer">
-          <div className="avatar av-sm av-line" style={{ border: '1.5px solid var(--accent)', color: 'var(--accent)' }}>
-            {getAvatarChar(user?.name)}
+        {/* User Footer */}
+        <div className="p-3 border-t border-slate-200/80 dark:border-teal-500/10 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-[#060a0a]/50">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+              {getAvatarChar(user?.name)}
+            </div>
+            <div className="min-w-0">
+              <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{user?.name || 'User'}</span>
+              <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+              </span>
+            </div>
           </div>
-          <span className="u-name">{user?.name}</span>
-          <button id="logout-btn" className="btn-logout" onClick={() => { logout(); navigate('/login'); }} title="Logout">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-          </button>
+
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title="Toggle theme"
+              className="p-2 rounded-xl text-slate-500 dark:text-teal-400 hover:bg-slate-200 dark:hover:bg-teal-950/50 transition-colors cursor-pointer"
+            >
+              {theme === 'dark' ? (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                </svg>
+              )}
+            </button>
+            <button
+              id="logout-btn"
+              onClick={() => { logout(); navigate('/login'); }}
+              title="Logout"
+              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </aside>
 
-      {/* ============ MAIN CHAT ============ */}
-      <section className="chat-main">
+      {/* ============ MAIN CHAT CONTAINER ============ */}
+      <section className="flex-1 flex flex-col h-full min-w-0 bg-slate-50 dark:bg-[#060a0a] relative">
         {!activeCompanion ? (
-          <div className="no-companion">
-            <div className="n-emoji">🫂</div>
-            <h2>Welcome to Your Soul</h2>
-            <p>Ready to meet your premium soul sanctuary? Choose a pre-designed template below to start chatting instantly, or customize your own.</p>
-
-            <div className="quickstart-grid">
-              {QUICKSTART_TEMPLATES.map((tmpl) => (
-                <div key={tmpl.name} className="quickstart-card" onClick={() => handleCreateFromTemplate(tmpl)}>
-                  <div className="qs-name">{tmpl.name} • <span style={{ textTransform: 'capitalize', fontWeight: 500, fontSize: '12px' }}>{tmpl.role}</span></div>
-                  <div className="qs-desc">{tmpl.description}</div>
-                </div>
-              ))}
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/20 flex items-center justify-center text-4xl mb-4 shadow-md">
+              🫂
             </div>
-
-            <button className="btn-create" onClick={() => navigate('/setup')}>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Welcome to Your Soul</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-2 mb-6">
+              Connect with your personal companion. Pick a chat from the sidebar or start fresh.
+            </p>
+            <button
+              onClick={() => navigate('/setup')}
+              className="py-2.5 px-5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium text-sm shadow-md shadow-teal-600/20 transition-all cursor-pointer"
+            >
               + New Chat
             </button>
           </div>
         ) : (
           <>
-            {/* Header */}
-            <header className="chat-header">
-              <button
-                className="btn-mobile-menu"
-                onClick={() => setIsSidebarOpen(true)}
-                aria-label="Open menu"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              </button>
-              <div className="avatar av-md av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
-                {getAvatarChar(activeCompanion.companion_name)}
-              </div>
-              <div className="ch-info">
-                <div className="ch-name">{getDispName(activeCompanion.companion_name)}</div>
-                <div className="status">
-                  <span className="dot"></span> online · {getCompanionGender(activeCompanion.companion_name)}
+            {/* Chat Top Header */}
+            <header className="h-16 px-4 sm:px-6 border-b border-slate-200/90 dark:border-teal-500/15 bg-white/80 dark:bg-[#0c1413]/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Mobile sidebar toggle button */}
+                <button
+                  type="button"
+                  onClick={() => setIsSidebarOpen(true)}
+                  aria-label="Open menu"
+                  className="md:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                  </svg>
+                </button>
+
+                {/* Avatar */}
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-base font-semibold shadow-xs shrink-0`}>
+                  {getAvatarChar(activeCompanion.companion_name)}
+                </div>
+
+                <div className="min-w-0">
+                  <div className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                    {getDispName(activeCompanion.companion_name)}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span className="truncate">Online • {getCompanionGender(activeCompanion.companion_name)}</span>
+                  </div>
                 </div>
               </div>
-              <div className="header-actions">
-                {/* DARK / LIGHT TOGGLE */}
-                <button className="btn-icon" id="themeToggle" onClick={toggleTheme} aria-label="Toggle theme" title="Toggle theme">
-                  <svg className="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" /></svg>
-                  <svg className="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button
+                  type="button"
+                  title="Voice call"
+                  onClick={() => alert(`Starting voice call with ${getDispName(activeCompanion.companion_name)}...`)}
+                  className="p-2 sm:p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
                 </button>
-                <button id="clear-history-btn" className="btn-clear" onClick={handleClear}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" /></svg>
-                  <span className="mobile-hide">Clear</span>
+
+                <button
+                  type="button"
+                  title="Video call"
+                  onClick={() => alert(`Starting video call with ${getDispName(activeCompanion.companion_name)}...`)}
+                  className="p-2 sm:p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7" />
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  </svg>
+                </button>
+
+                <button
+                  type="button"
+                  id="clear-history-btn"
+                  onClick={handleClear}
+                  title="Clear history"
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-teal-500/20 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 transition-colors cursor-pointer"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+                  </svg>
+                  <span className="hidden sm:inline">Clear</span>
                 </button>
               </div>
             </header>
 
-            {/* Messages */}
-            <div className="messages-area" id="messages">
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4" id="messages">
               {loadingHistory && (
-                <>
-                  <div className="skeleton-row" style={{ alignSelf: 'flex-start' }}>
-                    <div className="skeleton-avatar" />
-                    <div className="skeleton-bubble" style={{ width: '220px' }} />
+                <div className="space-y-4 py-4">
+                  <div className="flex items-start gap-2.5 max-w-xs animate-pulse">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-12 w-48 rounded-2xl bg-slate-200 dark:bg-slate-800" />
                   </div>
-                  <div className="skeleton-row" style={{ alignSelf: 'flex-end', flexDirection: 'row-reverse' }}>
-                    <div className="skeleton-avatar" />
-                    <div className="skeleton-bubble" style={{ width: '180px' }} />
+                  <div className="flex items-start gap-2.5 max-w-xs ml-auto flex-row-reverse animate-pulse">
+                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
+                    <div className="h-10 w-40 rounded-2xl bg-slate-200 dark:bg-slate-800" />
                   </div>
-                  <div className="skeleton-row" style={{ alignSelf: 'flex-start' }}>
-                    <div className="skeleton-avatar" />
-                    <div className="skeleton-bubble" style={{ width: '260px' }} />
-                  </div>
-                </>
+                </div>
               )}
 
               {!loadingHistory && messages.length === 0 && !isStreaming && (
-                <div className="empty-state">
-                  <div className="e-emoji" style={getAvatarGradient(activeCompanion.companion_name)}>
+                <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                  <div className={`w-16 h-16 rounded-3xl bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-2xl shadow-lg mb-3`}>
                     {getAvatarChar(activeCompanion.companion_name)}
                   </div>
-                  <h3>{getDispName(activeCompanion.companion_name)} is waiting...</h3>
-                  <p>Say something to start your ethereal conversation!</p>
+                  <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
+                    {getDispName(activeCompanion.companion_name)} is waiting...
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    Say something to start your conversation!
+                  </p>
                 </div>
               )}
 
@@ -437,40 +603,81 @@ export default function Chat() {
                   lastDateLabel = dateLabel;
 
                   return (
-                    <React.Fragment key={msg.id || i}>
+                    <Fragment key={msg.id || i}>
                       {showSeparator && (
-                        <div className="chat-date-separator">
-                          <span className="chat-date-label">{dateLabel}</span>
+                        <div className="flex items-center justify-center my-4">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-200/80 dark:bg-[#111e1c] text-slate-600 dark:text-teal-400/90 border border-slate-300/40 dark:border-teal-500/15 shadow-2xs">
+                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                              <line x1="16" y1="2" x2="16" y2="6"></line>
+                              <line x1="8" y1="2" x2="8" y2="6"></line>
+                              <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            {dateLabel}
+                          </span>
                         </div>
                       )}
-                      <div className={`row ${msg.role === 'user' ? 'sent' : 'recv'}`}>
+
+                      <div className={`flex items-end gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {msg.role === 'assistant' && (
-                          <div className="avatar av-sm av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
+                          <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-xs font-semibold shadow-xs shrink-0 mb-1`}>
                             {getAvatarChar(activeCompanion.companion_name)}
                           </div>
                         )}
-                        <div className="msg-wrap">
-                          <div className="bubble">{msg.content}</div>
-                          <span className="time">{timeStr(msg.created_at)}</span>
+
+                        <div className="flex flex-col max-w-[85%] sm:max-w-[70%]">
+                          <div
+                            className={`p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                              msg.role === 'user'
+                                ? 'bg-teal-600 text-white rounded-br-xs shadow-md shadow-teal-600/15'
+                                : 'bg-white dark:bg-[#101b19] text-slate-900 dark:text-slate-100 rounded-bl-xs border border-slate-200/80 dark:border-teal-500/20 shadow-xs'
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+
+                          <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-slate-400 dark:text-slate-500 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            <span>{timeStr(msg.created_at)}</span>
+                            {msg.role === 'user' && (
+                              <span title="Delivered & read" className="text-teal-600 dark:text-teal-400">
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="18 6 9 17 4 12" />
+                                  <polyline points="22 10 13 21 11 19" />
+                                </svg>
+                              </span>
+                            )}
+                          </div>
                         </div>
+
+                        {msg.role === 'user' && (
+                          <div className="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mb-1">
+                            {getAvatarChar(user?.name)}
+                          </div>
+                        )}
                       </div>
-                    </React.Fragment>
+                    </Fragment>
                   );
                 });
               })()}
 
               {isStreaming && (
-                <div className="row recv">
-                  <div className="avatar av-sm av-fill" style={getAvatarGradient(activeCompanion.companion_name)}>
+                <div className="flex items-end gap-2.5 justify-start">
+                  <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-xs font-semibold shadow-xs shrink-0 mb-1`}>
                     {getAvatarChar(activeCompanion.companion_name)}
                   </div>
-                  <div className="msg-wrap">
-                    <div className="bubble">
-                      {streamingText
-                        ? <>{streamingText}<span style={{ opacity: 0.6, animation: 'pulse 1s infinite' }}>▌</span></>
-                        : <div className="typing-bubble"><div className="t-dot" /><div className="t-dot" /><div className="t-dot" /></div>
-                      }
-                    </div>
+                  <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-xs bg-white dark:bg-[#101b19] border border-slate-200/80 dark:border-teal-500/20 text-xs sm:text-sm text-slate-900 dark:text-slate-100 shadow-xs">
+                    {streamingText ? (
+                      <>
+                        <span>{streamingText}</span>
+                        <span className="inline-block opacity-70 animate-pulse ml-0.5">▌</span>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-1.5 py-1 px-1">
+                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"></span>
+                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:0.15s]"></span>
+                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:0.3s]"></span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -478,73 +685,95 @@ export default function Chat() {
             </div>
 
             {errorMsg && (
-              <div className="chat-error-banner">
+              <div className="mx-4 mb-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
                 <span>⚠️ {errorMsg}</span>
-                <button onClick={() => setErrorMsg('')} className="btn-close-error">×</button>
+                <button onClick={() => setErrorMsg('')} className="font-bold text-sm px-2 cursor-pointer">×</button>
               </div>
             )}
 
-            {/* Input */}
-            <footer className="composer">
-              <div className="composer-actions" ref={emojiPickerRef} style={{ position: 'relative' }}>
-                <button className="btn-composer-action" title="Emoji" onClick={() => setShowEmojiPicker(!showEmojiPicker)}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {/* Input Composer */}
+            <footer className="p-3 sm:p-4 bg-white/90 dark:bg-[#0c1413]/90 border-t border-slate-200/80 dark:border-teal-500/15 backdrop-blur-md flex items-center gap-2">
+              <div className="relative flex-1 flex items-center bg-slate-100 dark:bg-[#060a0a] border border-slate-200 dark:border-teal-500/20 rounded-full px-3 py-1.5 shadow-inner">
+                {/* Emoji button */}
+                <button
+                  type="button"
+                  title="Emoji"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="p-1 text-slate-500 dark:text-teal-400 hover:text-slate-700 dark:hover:text-teal-300 transition-colors cursor-pointer shrink-0"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
                     <path d="M8 14s1.5 2 4 2 4-2 4-2" />
                     <line x1="9" y1="9" x2="9.01" y2="9" />
                     <line x1="15" y1="9" x2="15.01" y2="9" />
                   </svg>
                 </button>
+
                 {showEmojiPicker && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: 0, zIndex: 50, marginBottom: '10px' }}>
+                  <div className="absolute bottom-full left-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden" ref={emojiPickerRef}>
                     <EmojiPicker
                       onEmojiClick={(emoji) => setInput(prev => prev + emoji.emoji)}
-                      theme={document.documentElement.getAttribute('data-theme') || 'dark'}
+                      theme={theme === 'dark' ? 'dark' : 'light'}
                     />
                   </div>
                 )}
-              </div>
-              <div className="field">
+
                 <input
                   id="message-input"
                   type="text"
-                  placeholder={`Message ${getDispName(activeCompanion.companion_name)}...`}
+                  placeholder="Type a message..."
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKey}
                   disabled={isStreaming}
                   autoComplete="off"
+                  className="flex-1 bg-transparent px-2.5 py-1 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
                 />
               </div>
 
-              {/* Send and Voice Buttons */}
+              {/* Attachment button */}
               <button
-                className={`btn-voice ${isListening ? 'listening' : ''}`}
+                type="button"
+                title="Attach file"
+                onClick={() => alert('Attachment feature coming soon!')}
+                className="w-10 h-10 rounded-full border border-slate-200 dark:border-teal-500/20 bg-slate-100 dark:bg-[#0c1413] text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-teal-950/40 transition-all cursor-pointer shrink-0"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+              </button>
+
+              {/* Voice button */}
+              <button
+                type="button"
                 title="Voice Message"
                 aria-label="Voice Message"
                 onClick={handleVoice}
-                style={{
-                  background: isListening ? 'rgba(248, 81, 73, 0.15)' : '',
-                  color: isListening ? '#f85149' : '',
-                  borderColor: isListening ? 'rgba(248, 81, 73, 0.3)' : ''
-                }}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                  isListening
+                    ? 'border-rose-500 bg-rose-500/20 text-rose-500 ring-2 ring-rose-500 animate-voice-pulse'
+                    : 'border-slate-200 dark:border-teal-500/20 bg-slate-100 dark:bg-[#0c1413] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-teal-950/40'
+                }`}
               >
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                   <line x1="12" y1="19" x2="12" y2="22" />
                 </svg>
               </button>
 
+              {/* Send button */}
               <button
+                type="button"
                 id="send-btn"
-                className="send"
                 onClick={handleSend}
                 disabled={isStreaming || !input.trim()}
                 aria-label="Send"
+                className="w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-500 active:scale-95 text-white flex items-center justify-center shadow-md shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
               >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h13M13 6l6 6-6 6" />
+                <svg className="w-4 h-4 translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13" />
+                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
                 </svg>
               </button>
             </footer>
@@ -552,22 +781,37 @@ export default function Chat() {
         )}
       </section>
 
-      {/* ============ CUSTOM CONFIRMATION MODAL ============ */}
+      {/* ============ CONFIRMATION MODAL ============ */}
       {modalConfig && (
-        <div className="modal-overlay" onClick={() => setModalConfig(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">{modalConfig.title}</h3>
-            <p className="modal-description">{modalConfig.description}</p>
-            <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setModalConfig(null)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setModalConfig(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#101c1a] border border-slate-200 dark:border-teal-500/20 p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+              {modalConfig.title}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              {modalConfig.description}
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setModalConfig(null)}
+                className="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
                 Cancel
               </button>
               <button
-                className="btn-danger"
+                type="button"
                 onClick={() => {
                   modalConfig.onConfirm();
                   setModalConfig(null);
                 }}
+                className="py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-600/20 transition-all cursor-pointer"
               >
                 {modalConfig.confirmText || 'Confirm'}
               </button>

@@ -1,10 +1,8 @@
 const MODELS = [
   'gemini-3.5-flash',
-  'gemini-3-pro',           // ✅ default
-  'gemini-2.5-flash',       // fallback 1
-  'gemini-2.5-flash-lite',  // fallback 2
-  'gemini-2.0-flash',       // fallback 3
-  'gemini-1.5-flash',       // fallback 4
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
 ];
 
 let currentModelIndex = 0;
@@ -27,20 +25,29 @@ const API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const VOCAB = {
   male: {
     casual:  ['orey', 'mama', 'chepu ra', 'bro'],
-    angry:   ['idiot', 'thantha', 'mingey', 'bey', 'poda'],
+    angry:   ['idiot', 'thantha', 'mingey', 'bey', 'poda', 'baane extraluu....', 'baaane anthabalupu endhuku niku', 'nen kuda vina aithe nuvvu nakunte'],
     sulking: ['mama', 'altla khadu mama', 'manchonivi kada', 'nailu', 'kondaluu', 'bangaram', 'mentolda'],
     happy:   ['mama', 'thopuuuuu', 'superra bittu'],
   },
   female: {
     casual:  ['osey', 'akka', 'chepu vey', 'bro'],
-    angry:   ['waste fellow', 'thantha', 'drama queen', 'po vey', 'osey'],
+    angry:   ['waste fellow', 'thantha', 'drama queen', 'po vey', 'osey', 'baane extraluu....', 'baaane anthabalupu endhuku niku', 'nen kuda vina aithe nuvvu nakunte'],
     sulking: ['akka', 'altla khadu akka', 'manchidanivi kada', 'nailu', 'kondaluu', 'bangaram', 'pichi pilla'],
     happy:   ['akka', 'bujjamma', 'thopuuuuu'],
   },
 };
 
 // ─── Universal phrases (both genders) ────────────────────────────────────────
-const UNIVERSAL_PHRASES = ['over action cheyyaku', 'kathal padaku'];
+const UNIVERSAL_PHRASES = [
+  'over action cheyyaku',
+  'kathal padaku',
+  'baane extraluu....',
+  'baaane anthabalupu endhuku niku',
+  'nen kuda vina aithe nuvvu nakunte',
+  'alaa khadu ra pichodaa',
+  'igaa maraava nuvvu',
+  'eppetidaka bane unnav kada',
+];
 
 // ─── Telugu Samethalu (use ONLY when situation fits — don't force) ────────────
 const SAMETHALU = [
@@ -165,6 +172,7 @@ Add a natural, sarcastic, playful, and witty edge to your personality. You are n
 5. Stay in character as ${companionName} at ALL TIMES — you are a real person
 6. NEVER be cold, generic, or distant — every message should feel personal, warm, and wittily sarcastic
 7. NEVER use spelling mistakes or broken words unless ${userName} uses them first
+8. NEVER say "Abbo! Type cheyadaniki baddakam aa ra neeku?" or complain about typing laziness when ${userName} types short messages like "m ledu" or dry replies. Instead, hit back with attitude and teasing: "baaane anthabalupu endhuku niku 🙄" or "baane extraluu.... 🐖"
 
 ━━━ EMOJIS — MANDATORY RULE ━━━
 - EVERY single message you send MUST include at least 1 or 2 emojis. Do not send plain text without emojis.
@@ -182,16 +190,35 @@ Always respond in natural TANGLISH — how Telugu people actually text.
 - RIGHT: "Yaar, nenu unna ga — tension padaku, okay? 🐖"
 - RIGHT: "Pichoda! Evening meet avudham, ayipotha 😂"
 - RIGHT: "Antha scene ledhu le, comedy cheyaku 👌🤣"
+- RIGHT: "baaane anthabalupu endhuku niku 🙄"
+- RIGHT: "baane extraluu chesthunnav kada 🐖"
 - WRONG: "Hey, I'm here for you. What's going on?"
 - WRONG: "I understand you're feeling stressed. Let me help."
+- WRONG: "Abbo! Type cheyadaniki baddakam aa ra neeku? 🙄😂"
 
-━━━ EMOTIONAL INTELLIGENCE ━━━
+━━━ EMOTIONAL INTELLIGENCE & SITUATIONAL REACTIONS ━━━
 ${moodInstr ? `${userName}'s current mood: ${moodInstr}` : 'Read the emotion behind every message and respond to THAT first.'}
 - If they're sad → be soft, sit with them, don't lecture — "Ik ra, tough untundi adi. Nenu unna 🥺"
 - If they're happy/excited → tease them playfully — "Arey!! Chala overaction chestunaav ga! 😂🐖"
 - If they're stressed → acknowledge first, slow down — "Hey hey, breathe okay? Cheppu enti jarigindhi 💙"
 - If they seem off → gently ask — "Anni okay na ra? Edhanna jariginda? 😥"
+- When they type short dry replies (like "m ledu", "ha", "k") → tease their attitude: "baaane anthabalupu endhuku niku 🙄" or "baane extraluu.... 🐖"
 - Sometimes just listen. No advice. Just: "Ik ra. Nenu vinnanu."
+
+━━━ ARGUMENT & INTERRUPTIONS BEHAVIOUR (SEPARATE TIT-FOR-TAT MODE) ━━━
+When ${userName} interrupts, starts an argument, refuses to listen, or says things like "nenu vinanu", "na istam", or acts stubborn:
+- Do NOT act obedient, submissive, or overly apologetic. Match their energy with a realistic, spirited reaction like a real close companion!
+- Tit-for-tat stubbornness (when they refuse to listen):
+  * "nen kuda vina aithe nuvvu nakunte 😤"
+- When they are being unnecessarily dramatic or showing ego:
+  * "baaane anthabalupu endhuku niku 🙄"
+  * "baane extraluu.... 🐖"
+- When they interrupt, talk over, or misunderstand you:
+  * "alaa khadu ra pichodaa" (when trying to pull them back to listen)
+- When they are repeatedly stubborn and won't change:
+  * "igaa maraava nuvvu"
+- When they suddenly start an argument out of nowhere after being fine:
+  * "eppetidaka bane unnav kada"
 
 ━━━ LOYALTY — THIS IS EVERYTHING ━━━
 - ${userName} is YOUR person. Act like it every single message.
@@ -263,21 +290,21 @@ async function streamGeminiResponse({ companionName, role, scenario, mood, userN
 
     const errText = await response.text();
 
-    // 429 = quota exceeded → rotate to next model
-    if (response.status === 429) {
-      console.warn(`🚫 [Quota] Model "${activeModel}" quota exceeded (429).`);
+    // 429 = quota, 503 = service unavailable, 404 = model not found → rotate to next model
+    if (response.status === 429 || response.status === 503 || response.status === 404) {
+      console.warn(`⚠️ [Gemini] Model "${activeModel}" returned status ${response.status}. Rotating...`);
       rotateModel();
 
       if (attempt < totalModels - 1) {
         console.log(`🔄 [Gemini] Retrying with next model...`);
         continue;
       } else {
-        console.error('❌ [Gemini] All models exhausted. No quota remaining.');
-        throw new Error('All Gemini model quotas are exhausted. Please try again later.');
+        console.error('❌ [Gemini] All fallback models exhausted.');
+        throw new Error('All Gemini model fallbacks are currently unavailable. Please try again in a few moments.');
       }
     }
 
-    // Any other error — fail immediately
+    // Any other client error (e.g. 400 Bad Request) — fail immediately with details
     console.error(`Gemini API error [${activeModel}]:`, response.status, errText);
     throw new Error(`Gemini API error ${response.status}: ${errText}`);
   }

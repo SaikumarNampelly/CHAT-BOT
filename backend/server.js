@@ -65,8 +65,8 @@ server.on('error', (err) => {
     // console.error(`❌ Port ${PORT} is in use. Killing the blocking process...`);
     const { execSync } = require('child_process');
     try {
-      // Find and kill PID using the port on Windows
-      const result = execSync(`netstat -ano | findstr :${PORT}`).toString();
+      // Find and kill PID listening on the port on Windows
+      const result = execSync(`netstat -ano | findstr LISTENING | findstr :${PORT}`).toString();
       const lines = result.trim().split('\n');
       const pids = new Set();
       lines.forEach(line => {
