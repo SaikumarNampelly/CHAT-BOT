@@ -44,7 +44,6 @@ export default function CompanionSetup() {
   const { theme, toggleTheme } = useThemeStore();
 
   const [companionName, setCompanionName] = useState('');
-  const [gender, setGender]               = useState('female');
   const [userGender, setUserGender]       = useState('male');
   const [scenario, setScenario]           = useState('');
   const [error, setError]                 = useState('');
