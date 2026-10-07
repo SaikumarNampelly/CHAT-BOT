@@ -52,11 +52,21 @@ create index if not exists idx_messages_companion_id on messages(companion_id);
 create index if not exists idx_messages_created_at on messages(created_at);
 
 -- ─────────────────────────────
--- Row Level Security (optional but recommended)
+-- Row Level Security
 -- ─────────────────────────────
-alter table users enable row level security;
-alter table companions enable row level security;
-alter table messages enable row level security;
+-- If using the secret `service_role` key in backend/.env, no policies are required (it bypasses RLS).
+-- If using a publishable key, run either Option A or Option B below:
 
--- Allow service role (backend) full access — your backend uses service_role key
--- so no additional policies needed for server-side access.
+-- Option A: Disable RLS for all tables (Recommended for simple custom JWT backends)
+alter table users disable row level security;
+alter table companions disable row level security;
+alter table messages disable row level security;
+
+-- Option B: Or enable RLS with public access policies
+-- alter table users enable row level security;
+-- alter table companions enable row level security;
+-- alter table messages enable row level security;
+-- create policy "Public users insert" on users for insert with check (true);
+-- create policy "Public users select" on users for select using (true);
+-- create policy "Public companions all" on companions for all using (true) with check (true);
+-- create policy "Public messages all" on messages for all using (true) with check (true);

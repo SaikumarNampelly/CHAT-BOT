@@ -44,7 +44,7 @@ export default function CompanionSetup() {
   const { theme, toggleTheme } = useThemeStore();
 
   const [companionName, setCompanionName] = useState('');
-  const [userGender, setUserGender]       = useState('male');
+  const [gender, setGender]               = useState('female');
   const [scenario, setScenario]           = useState('');
   const [error, setError]                 = useState('');
   const [loading, setLoading]             = useState(false);
@@ -60,7 +60,7 @@ export default function CompanionSetup() {
     setLoading(true);
     try {
       const { data: companion } = await api.post('/companions', {
-        companion_name: `${emoji}|${gender}|${userGender}|${companionName.trim()}`,
+        companion_name: `${emoji}|${gender}|other|${companionName.trim()}`,
         role: 'friend',
         scenario: scenario.trim(),
         language: 'tanglish',
@@ -77,7 +77,7 @@ export default function CompanionSetup() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-y-auto py-12">
+    <div className="w-full flex-1 flex flex-col items-center justify-start p-4 sm:p-6 py-8 sm:py-12">
       {/* Top right theme toggle */}
       <button
         type="button"
@@ -102,12 +102,14 @@ export default function CompanionSetup() {
       <div className="w-full max-w-lg my-auto rounded-3xl border border-slate-200/90 dark:border-teal-500/20 bg-white/85 dark:bg-[#0c1413]/85 backdrop-blur-xl p-6 sm:p-9 shadow-2xl shadow-slate-300/40 dark:shadow-black/50 transition-all">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-2.5 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-950/50 border border-teal-200 dark:border-teal-500/30 flex items-center justify-center text-lg">
-              🫂
-            </div>
+          <div className="inline-flex items-center gap-3 mb-2">
+            <img
+              src="/talkmate-icon.png"
+              alt="TalkMate"
+              className="w-10 h-10 rounded-xl object-cover shadow-md border border-white/20"
+            />
             <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Your Soul
+              Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
@@ -205,33 +207,6 @@ export default function CompanionSetup() {
           </div>
         </div>
 
-        {/* User Gender */}
-        <div className="mb-5">
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-            Your Gender
-          </label>
-          <div className="grid grid-cols-3 gap-2.5">
-            {GENDER_OPTIONS.map((g) => {
-              const active = userGender === g.id;
-              return (
-                <button
-                  key={g.id}
-                  id={`user-gender-${g.id}`}
-                  type="button"
-                  onClick={() => setUserGender(g.id)}
-                  className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-                    active
-                      ? 'border-teal-500 bg-teal-500/10 text-teal-600 dark:text-teal-300 ring-2 ring-teal-500/30 shadow-sm'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#090f0e] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
-                  }`}
-                >
-                  {g.icon}
-                  <span>{g.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Context / Scenario */}
         <div className="mb-6">

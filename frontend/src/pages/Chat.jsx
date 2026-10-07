@@ -31,6 +31,12 @@ function getDateGroupLabel(isoString) {
   }
 }
 
+const QUICK_PRESETS = [
+  { name: 'Priya', gender: 'female', emoji: '🌸', desc: 'Sweet & caring bestie' },
+  { name: 'Arjun', gender: 'male', emoji: '⚡', desc: 'Chill & supportive buddy' },
+  { name: 'Ananya', gender: 'female', emoji: '✨', desc: 'Smart & cheerful' },
+];
+
 export default function Chat() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -52,8 +58,20 @@ export default function Chat() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
+  // New Chat Modal state
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newCompanionName, setNewCompanionName] = useState('');
+  const [newCompanionGender, setNewCompanionGender] = useState('female');
+  const [newUserGender, setNewUserGender] = useState('male');
+  const [newScenario, setNewScenario] = useState('');
+  const [newEmoji, setNewEmoji] = useState('🫂');
+  const [showModalEmojiPicker, setShowModalEmojiPicker] = useState(false);
+  const [creatingChat, setCreatingChat] = useState(false);
+  const [createChatError, setCreateChatError] = useState('');
+
   const bottomRef = useRef(null);
   const emojiPickerRef = useRef(null);
+  const modalEmojiRef = useRef(null);
   const searchInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const greetingTriggered = useRef({});
@@ -63,6 +81,9 @@ export default function Chat() {
     const handleClickOutside = (e) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
+      }
+      if (modalEmojiRef.current && !modalEmojiRef.current.contains(e.target)) {
+        setShowModalEmojiPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -81,23 +102,70 @@ export default function Chat() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fetch companions list
+  // Fetch companions list & auto-select
   useEffect(() => {
     api.get('/companions')
       .then(({ data }) => {
-        setCompanions(data);
-        if (activeCompanion?.id) {
-          const fresh = data.find(c => c.id === activeCompanion.id);
-          if (!fresh) {
-            setActiveCompanion(null);
-          } else if (fresh.companion_name !== activeCompanion.companion_name) {
-            setActiveCompanion(fresh);
+        const list = data || [];
+        setCompanions(list);
+        if (list.length > 0) {
+          if (activeCompanion?.id) {
+            const fresh = list.find(c => c.id === activeCompanion.id);
+            if (fresh) {
+              if (fresh.companion_name !== activeCompanion.companion_name) {
+                setActiveCompanion(fresh);
+              }
+            } else {
+              setActiveCompanion(list[0]);
+            }
+          } else {
+            setActiveCompanion(list[0]);
           }
+        } else {
+          setActiveCompanion(null);
         }
       })
       .catch(() => { });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleCreateCompanion = async (nameOverride, genderOverride, emojiOverride) => {
+    const finalName = (nameOverride || newCompanionName).trim();
+    if (!finalName) {
+      setCreateChatError('Please enter a name for your companion.');
+      return;
+    }
+    const finalGender = genderOverride || newCompanionGender;
+    const finalEmoji = emojiOverride || newEmoji;
+    setCreateChatError('');
+    setCreatingChat(true);
+
+    try {
+      const { data: newComp } = await api.post('/companions', {
+        companion_name: `${finalEmoji}|${finalGender}|${newUserGender}|${finalName}`,
+        role: 'friend',
+        scenario: newScenario.trim(),
+        language: 'tanglish',
+      });
+
+      const { data: list } = await api.get('/companions');
+      setCompanions(list || [newComp]);
+      setActiveCompanion(newComp);
+      setShowNewChatModal(false);
+      setNewCompanionName('');
+      setNewScenario('');
+      setIsSidebarOpen(false);
+    } catch (err) {
+      console.error('Failed to create companion:', err);
+      setCreateChatError(err.response?.data?.error || 'Failed to start new chat. Please try again.');
+    } finally {
+      setCreatingChat(false);
+    }
+  };
+
+  const handleQuickStart = () => {
+    handleCreateCompanion('Priya', 'female', '🌸');
+  };
 
   // Load chat history and trigger greeting if new
   useEffect(() => {
@@ -283,7 +351,7 @@ export default function Chat() {
   });
 
   return (
-    <div className="relative flex h-screen w-full bg-slate-100/60 dark:bg-[#060a0a] overflow-hidden">
+    <div className="relative flex h-screen h-dvh w-full bg-slate-100/30 dark:bg-[#060a0a]/60 overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -302,13 +370,15 @@ export default function Chat() {
         <div className="p-4 border-b border-slate-200/80 dark:border-teal-500/10 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400">
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-              </div>
+              <img
+                src="/talkmate-icon.png"
+                alt="TalkMate"
+                className="w-8 h-8 rounded-xl object-cover shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10"
+              />
               <div>
-                <span className="block font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-tight">Your Soul</span>
+                <span className="block font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-tight">
+                  Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
+                </span>
                 <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-medium tracking-wide">Feel the connection</span>
               </div>
             </div>
@@ -323,7 +393,7 @@ export default function Chat() {
 
           <button
             id="new-companion-btn"
-            onClick={() => navigate('/setup')}
+            onClick={() => setShowNewChatModal(true)}
             className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 transition-all cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -474,22 +544,55 @@ export default function Chat() {
       </aside>
 
       {/* ============ MAIN CHAT CONTAINER ============ */}
-      <section className="flex-1 flex flex-col h-full min-w-0 bg-slate-50 dark:bg-[#060a0a] relative">
+      <section className="flex-1 flex flex-col h-full min-w-0 bg-slate-50/75 dark:bg-[#060a0a]/75 backdrop-blur-[2px] relative">
         {!activeCompanion ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-            <div className="w-20 h-20 rounded-3xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/20 flex items-center justify-center text-4xl mb-4 shadow-md">
-              🫂
+            <div className="relative mb-4">
+              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-teal-400 via-blue-500 to-purple-600 opacity-25 blur-lg"></div>
+              <img
+                src="/talkmate-icon.png"
+                alt="TalkMate"
+                className="relative w-20 h-20 rounded-3xl object-cover shadow-xl border border-white/20"
+              />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Welcome to Your Soul</h2>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+              Welcome to Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
+            </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-2 mb-6">
               Connect with your personal companion. Pick a chat from the sidebar or start fresh.
             </p>
-            <button
-              onClick={() => navigate('/setup')}
-              className="py-2.5 px-5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium text-sm shadow-md shadow-teal-600/20 transition-all cursor-pointer"
-            >
-              + New Chat
-            </button>
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <button
+                id="quick-start-chat-btn"
+                type="button"
+                disabled={creatingChat}
+                onClick={handleQuickStart}
+                className="py-2.5 px-6 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-semibold text-sm shadow-md shadow-teal-600/20 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-60"
+              >
+                {creatingChat ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Starting chat...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>💬</span>
+                    <span>Start Chatting Now</span>
+                  </>
+                )}
+              </button>
+              <button
+                id="customize-new-chat-btn"
+                type="button"
+                onClick={() => setShowNewChatModal(true)}
+                className="py-2.5 px-5 rounded-xl border border-slate-300 dark:border-teal-500/30 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-teal-950/40 font-medium text-sm transition-all cursor-pointer"
+              >
+                + Customize Companion
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -814,6 +917,190 @@ export default function Chat() {
                 className="py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-600/20 transition-all cursor-pointer"
               >
                 {modalConfig.confirmText || 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ NEW CHAT MODAL ============ */}
+      {showNewChatModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150"
+          onClick={() => setShowNewChatModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0c1413] border border-slate-200 dark:border-teal-500/30 p-6 sm:p-7 shadow-2xl space-y-4 my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-teal-500/15 pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 text-lg">
+                  💬
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                    Start a New Chat
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pick a friend preset or customize your companion
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Pick Presets */}
+            <div>
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+                ⚡ Quick Start (1-Click)
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {QUICK_PRESETS.map((p) => (
+                  <button
+                    key={p.name}
+                    type="button"
+                    disabled={creatingChat}
+                    onClick={() => handleCreateCompanion(p.name, p.gender, p.emoji)}
+                    className="p-2.5 rounded-2xl border border-slate-200 dark:border-teal-500/20 bg-slate-50 dark:bg-[#070c0b] hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-950/40 text-center transition-all cursor-pointer group"
+                  >
+                    <span className="block text-2xl mb-1 group-hover:scale-110 transition-transform">{p.emoji}</span>
+                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{p.name}</span>
+                    <span className="block text-[10px] text-slate-400 dark:text-slate-500 truncate">{p.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-slate-200 dark:bg-teal-500/15" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Or Customize
+              </span>
+              <div className="flex-1 h-px bg-slate-200 dark:bg-teal-500/15" />
+            </div>
+
+            {createChatError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{createChatError}</span>
+              </div>
+            )}
+
+            {/* Form Fields */}
+            <div className="space-y-3.5">
+              {/* Profile Emoji & Name */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <button
+                    type="button"
+                    title="Change Emoji"
+                    onClick={() => setShowModalEmojiPicker(!showModalEmojiPicker)}
+                    className="w-12 h-12 rounded-2xl border-2 border-dashed border-teal-500/60 bg-slate-50 dark:bg-[#070c0b] flex items-center justify-center text-2xl shadow-xs cursor-pointer hover:scale-105 transition-transform shrink-0"
+                  >
+                    {newEmoji}
+                  </button>
+                  {showModalEmojiPicker && (
+                    <div className="absolute top-full left-0 z-50 mt-2 shadow-2xl rounded-2xl overflow-hidden" ref={modalEmojiRef}>
+                      <EmojiPicker
+                        onEmojiClick={(e) => {
+                          setNewEmoji(e.emoji);
+                          setShowModalEmojiPicker(false);
+                        }}
+                        theme={theme === 'dark' ? 'dark' : 'light'}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1" htmlFor="modal-comp-name">
+                    Companion Name
+                  </label>
+                  <input
+                    id="modal-comp-name"
+                    type="text"
+                    placeholder="e.g. Priya, Arjun, Siri..."
+                    value={newCompanionName}
+                    onChange={(e) => setNewCompanionName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCompanion()}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              {/* Companion's Gender */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                  Companion's Gender
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['female', 'male', 'other'].map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setNewCompanionGender(g)}
+                      className={`py-1.5 px-3 rounded-xl border text-xs font-semibold capitalize transition-all cursor-pointer ${
+                        newCompanionGender === g
+                          ? 'border-teal-500 bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-1 ring-teal-500/40'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Context / Scenario */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                  Context / Vibe <span className="lowercase font-normal text-slate-400">(optional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Best friend from college, talks casually in Telugu/Tanglish..."
+                  value={newScenario}
+                  onChange={(e) => setNewScenario(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                className="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                id="create-new-chat-submit-btn"
+                type="button"
+                disabled={creatingChat}
+                onClick={() => handleCreateCompanion()}
+                className="py-2 px-5 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-600/20 transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2"
+              >
+                {creatingChat ? (
+                  <>
+                    <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Creating...</span>
+                  </>
+                ) : (
+                  'Start Chatting →'
+                )}
               </button>
             </div>
           </div>

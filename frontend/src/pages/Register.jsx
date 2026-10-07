@@ -26,7 +26,7 @@ export default function Register() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div className="w-full flex-1 flex flex-col items-center justify-start p-4 sm:p-6 py-8 sm:py-12">
       {/* Top right theme toggle */}
       <button
         type="button"
@@ -51,11 +51,16 @@ export default function Register() {
       <div className="w-full max-w-md my-auto rounded-3xl border border-slate-200/90 dark:border-teal-500/20 bg-white/85 dark:bg-[#0c1413]/85 backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-slate-300/40 dark:shadow-black/50 transition-all">
         {/* Brand header */}
         <div className="flex flex-col items-center text-center mb-7">
-          <div className="w-14 h-14 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/30 flex items-center justify-center text-2xl shadow-inner mb-3">
-            🫂
+          <div className="relative mb-3.5 group">
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-teal-400 via-blue-500 to-purple-600 opacity-30 blur-md group-hover:opacity-45 transition-opacity"></div>
+            <img
+              src="/talkmate-icon.png"
+              alt="TalkMate"
+              className="relative w-16 h-16 rounded-2xl object-cover shadow-lg border border-white/20"
+            />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Your Soul
+            Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
           </h1>
           <p className="text-xs font-medium text-teal-600 dark:text-teal-400 mt-1 uppercase tracking-wider">
             Feel the connection
@@ -64,7 +69,7 @@ export default function Register() {
 
         <div className="text-center mb-6">
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Create your account</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Join and meet your soul</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Join and meet your companion</p>
         </div>
 
         {error && (

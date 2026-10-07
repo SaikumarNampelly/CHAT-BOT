@@ -20,7 +20,16 @@ module.exports = async (req, res, next) => {
       .eq('id', decoded.id)
       .single();
 
-    if (error || !user) {
+    if (error) {
+      if (error.code === 'PGRST116' || !user) {
+        return res.status(401).json({ error: 'Unauthorized — user does not exist in database' });
+      }
+      console.warn('⚠️ Supabase user lookup warning, using decoded token:', error.message);
+      req.user = decoded;
+      return next();
+    }
+
+    if (!user) {
       return res.status(401).json({ error: 'Unauthorized — user does not exist in database' });
     }
 
