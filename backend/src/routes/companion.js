@@ -63,6 +63,59 @@ router.post('/', async (req, res) => {
   }
 });
 
+// ─── PATCH /api/companions/:id — update companion profile & avatar ──
+router.patch('/:id', async (req, res) => {
+  try {
+    const { companion_name, role, scenario, language } = req.body;
+    const updates = {};
+    if (companion_name !== undefined) updates.companion_name = companion_name;
+    if (role !== undefined) updates.role = role;
+    if (scenario !== undefined) updates.scenario = scenario;
+    if (language !== undefined) updates.language = language;
+
+    const { data, error } = await supabase
+      .from('companions')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[PATCH /api/companions/:id] Error:', error);
+      throw error;
+    }
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Alias PUT for compatibility
+router.put('/:id', async (req, res) => {
+  try {
+    const { companion_name, role, scenario, language } = req.body;
+    const updates = {};
+    if (companion_name !== undefined) updates.companion_name = companion_name;
+    if (role !== undefined) updates.role = role;
+    if (scenario !== undefined) updates.scenario = scenario;
+    if (language !== undefined) updates.language = language;
+
+    const { data, error } = await supabase
+      .from('companions')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('user_id', req.user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── DELETE /api/companions/:id — delete companion + history ──
 router.delete('/:id', async (req, res) => {
   try {

@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
 import EmojiPicker from 'emoji-picker-react';
+import AvatarSelector from '../components/AvatarSelector';
+import { isImageAvatar } from '../utils/avatar';
 
 function timeStr(iso) {
   if (!iso) return '';
@@ -41,7 +43,7 @@ export default function Chat() {
     messages, isStreaming, streamingText,
     setCompanions, setActiveCompanion, setMessages,
     addMessage, startStreaming, appendStreamChunk, finishStreaming,
-    cancelStreaming, clearHistory, removeCompanion,
+    cancelStreaming, clearHistory, removeCompanion, updateCompanion,
   } = useChatStore();
 
   const [input, setInput] = useState('');
@@ -58,15 +60,21 @@ export default function Chat() {
   const [newCompanionName, setNewCompanionName] = useState('');
   const [newCompanionGender, setNewCompanionGender] = useState('female');
   const [newScenario, setNewScenario] = useState('');
-  const [newEmoji, setNewEmoji] = useState('🫂');
-  const [showModalEmojiPicker, setShowModalEmojiPicker] = useState(false);
+  const [newEmoji, setNewEmoji] = useState('🌸');
   const [creatingChat, setCreatingChat] = useState(false);
   const [createChatError, setCreateChatError] = useState('');
+
+  // Edit Companion Profile Modal state
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editAvatar, setEditAvatar] = useState('🌸');
+  const [editScenario, setEditScenario] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [editProfileError, setEditProfileError] = useState('');
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const emojiPickerRef = useRef(null);
-  const modalEmojiRef = useRef(null);
   const searchInputRef = useRef(null);
   const recognitionRef = useRef(null);
   const greetingTriggered = useRef({});
@@ -76,9 +84,6 @@ export default function Chat() {
     const handleClickOutside = (e) => {
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
-      }
-      if (modalEmojiRef.current && !modalEmojiRef.current.contains(e.target)) {
-        setShowModalEmojiPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -343,10 +348,68 @@ export default function Chat() {
   };
 
   const getAvatarChar = (name) => {
-    if (!name) return 'C';
+    if (!name) return '🌸';
     const parts = name.split('|');
     if (parts.length >= 2) return parts[0];
-    return name[0]?.toUpperCase() || 'C';
+    return name[0]?.toUpperCase() || '🌸';
+  };
+
+  const renderAvatar = (rawName, sizeClass = "w-10 h-10 text-base", roundedClass = "rounded-full") => {
+    const avatar = getAvatarChar(rawName);
+    const isImg = isImageAvatar(avatar);
+
+    if (isImg) {
+      return (
+        <img
+          src={avatar}
+          alt={getDispName(rawName) || 'Companion'}
+          className={`${sizeClass} ${roundedClass} object-cover shrink-0 shadow-xs border border-white/20`}
+        />
+      );
+    }
+
+    return (
+      <div className={`${sizeClass} ${roundedClass} bg-gradient-to-br ${getAvatarGradient(rawName)} flex items-center justify-center text-white font-semibold shadow-xs shrink-0 select-none`}>
+        {avatar}
+      </div>
+    );
+  };
+
+  const handleOpenEditProfile = () => {
+    if (!activeCompanion) return;
+    setEditName(getDispName(activeCompanion.companion_name));
+    setEditAvatar(getAvatarChar(activeCompanion.companion_name));
+    setEditScenario(activeCompanion.scenario || '');
+    setEditProfileError('');
+    setShowEditProfileModal(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!activeCompanion) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditProfileError('Please enter a name for your companion.');
+      return;
+    }
+    setSavingProfile(true);
+    setEditProfileError('');
+
+    try {
+      const gender = getCompanionGender(activeCompanion.companion_name);
+      const newCompanionNamePayload = `${editAvatar || '🌸'}|${gender}|other|${trimmed}`;
+      const { data: updated } = await api.patch(`/companions/${activeCompanion.id}`, {
+        companion_name: newCompanionNamePayload,
+        scenario: editScenario.trim(),
+      });
+
+      updateCompanion(updated);
+      setShowEditProfileModal(false);
+    } catch (err) {
+      console.error('Failed to update companion profile:', err);
+      setEditProfileError(err.response?.data?.error || 'Failed to update profile.');
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   const filteredCompanions = companions.filter((c) => {
@@ -461,9 +524,7 @@ export default function Chat() {
                 }`}
               >
                 {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarGradient(c.companion_name)} flex items-center justify-center text-white text-base font-semibold shadow-xs shrink-0`}>
-                  {getAvatarChar(c.companion_name)}
-                </div>
+                {renderAvatar(c.companion_name, "w-10 h-10 text-base")}
 
                 {/* Details */}
                 <div className="flex-1 min-w-0">
@@ -597,18 +658,34 @@ export default function Chat() {
                   </svg>
                 </button>
 
-                {/* Avatar */}
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-base font-semibold shadow-xs shrink-0`}>
-                  {getAvatarChar(activeCompanion.companion_name)}
-                </div>
-
-                <div className="min-w-0">
-                  <div className="font-bold text-sm sm:text-base text-[#171533] dark:text-[#F4F3FA] truncate">
-                    {getDispName(activeCompanion.companion_name)}
+                {/* Clickable Profile Avatar & Name (opens Edit Profile Modal) */}
+                <div
+                  onClick={handleOpenEditProfile}
+                  title="Click to edit picture or name"
+                  className="flex items-center gap-3 min-w-0 cursor-pointer p-1 -m-1 rounded-2xl hover:bg-[#F8F7FC] dark:hover:bg-[#1E1A3C]/60 transition-colors group"
+                >
+                  <div className="relative shrink-0">
+                    {renderAvatar(activeCompanion.companion_name, "w-10 h-10 text-base")}
+                    <div className="absolute inset-0 rounded-full bg-black/45 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[#68657D] dark:text-[#A09DB8]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#23C4F0] shrink-0"></span>
-                    <span className="truncate">Online • {getCompanionGender(activeCompanion.companion_name)}</span>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 font-bold text-sm sm:text-base text-[#171533] dark:text-[#F4F3FA] truncate">
+                      <span>{getDispName(activeCompanion.companion_name)}</span>
+                      <svg className="w-3.5 h-3.5 text-[#68657D] opacity-0 group-hover:opacity-100 transition-opacity shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                      </svg>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-[#68657D] dark:text-[#A09DB8]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#23C4F0] shrink-0"></span>
+                      <span className="truncate">Online • {getCompanionGender(activeCompanion.companion_name)}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -670,9 +747,7 @@ export default function Chat() {
 
               {!loadingHistory && messages.length === 0 && !isStreaming && (
                 <div className="flex flex-col items-center justify-center h-full text-center py-12">
-                  <div className={`w-16 h-16 rounded-3xl bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-2xl shadow-lg mb-3`}>
-                    {getAvatarChar(activeCompanion.companion_name)}
-                  </div>
+                  {renderAvatar(activeCompanion.companion_name, "w-16 h-16 text-2xl", "rounded-3xl shadow-lg mb-3")}
                   <h3 className="font-bold text-base text-[#171533] dark:text-[#F4F3FA]">
                     {getDispName(activeCompanion.companion_name)} is waiting...
                   </h3>
@@ -706,11 +781,7 @@ export default function Chat() {
                       )}
 
                       <div className={`flex items-end gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {msg.role === 'assistant' && (
-                          <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-xs font-semibold shadow-xs shrink-0 mb-1`}>
-                            {getAvatarChar(activeCompanion.companion_name)}
-                          </div>
-                        )}
+                        {msg.role === 'assistant' && renderAvatar(activeCompanion.companion_name, "w-7 h-7 text-xs", "rounded-full mb-1")}
 
                         <div className="flex flex-col max-w-[85%] sm:max-w-[70%]">
                           <div
@@ -749,9 +820,7 @@ export default function Chat() {
 
               {isStreaming && (
                 <div className="flex items-end gap-2.5 justify-start">
-                  <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-xs font-semibold shadow-xs shrink-0 mb-1`}>
-                    {getAvatarChar(activeCompanion.companion_name)}
-                  </div>
+                  {renderAvatar(activeCompanion.companion_name, "w-7 h-7 text-xs", "rounded-full mb-1")}
                   <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-xs bg-white dark:bg-[#141228] border border-[#E7E5F0] dark:border-[#26214B] text-xs sm:text-sm text-[#171533] dark:text-[#F4F3FA] shadow-xs">
                     {streamingText ? (
                       <>
@@ -963,44 +1032,27 @@ export default function Chat() {
 
             {/* Form Fields */}
             <div className="space-y-3.5">
-              {/* Profile Emoji & Name */}
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <button
-                    type="button"
-                    title="Change Emoji"
-                    onClick={() => setShowModalEmojiPicker(!showModalEmojiPicker)}
-                    className="w-12 h-12 rounded-2xl border-2 border-dashed border-[#643EF3]/50 bg-[#F8F7FC] dark:bg-[#0C0A1B] flex items-center justify-center text-2xl shadow-xs cursor-pointer hover:scale-105 hover:border-[#643EF3] transition-all shrink-0"
-                  >
-                    {newEmoji}
-                  </button>
-                  {showModalEmojiPicker && (
-                    <div className="absolute top-full left-0 z-50 mt-2 shadow-2xl rounded-2xl overflow-hidden" ref={modalEmojiRef}>
-                      <EmojiPicker
-                        onEmojiClick={(e) => {
-                          setNewEmoji(e.emoji);
-                          setShowModalEmojiPicker(false);
-                        }}
-                        theme={theme === 'dark' ? 'dark' : 'light'}
-                      />
-                    </div>
-                  )}
-                </div>
+              {/* Profile Avatar (Emoji, Upload Photo, Presets) */}
+              <AvatarSelector
+                value={newEmoji}
+                onChange={setNewEmoji}
+                companionName={newCompanionName}
+              />
 
-                <div className="flex-1 min-w-0">
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1" htmlFor="modal-comp-name">
-                    Companion Name
-                  </label>
-                  <input
-                    id="modal-comp-name"
-                    type="text"
-                    placeholder="e.g. Maya, Alex, Sam..."
-                    value={newCompanionName}
-                    onChange={(e) => setNewCompanionName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCompanion()}
-                    className="w-full px-3 py-2 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs sm:text-sm focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20"
-                  />
-                </div>
+              {/* Name */}
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1" htmlFor="modal-comp-name">
+                  Companion Name
+                </label>
+                <input
+                  id="modal-comp-name"
+                  type="text"
+                  placeholder="e.g. Maya, Alex, Sam..."
+                  value={newCompanionName}
+                  onChange={(e) => setNewCompanionName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCompanion()}
+                  className="w-full px-3 py-2 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs sm:text-sm focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20"
+                />
               </div>
 
               {/* Companion's Gender */}
@@ -1068,6 +1120,105 @@ export default function Chat() {
                 ) : (
                   'Start Chatting →'
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============ EDIT COMPANION PROFILE MODAL ============ */}
+      {showEditProfileModal && activeCompanion && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150"
+          onClick={() => setShowEditProfileModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-white dark:bg-[#141228] border border-[#E7E5F0] dark:border-[#26214B] p-6 sm:p-7 shadow-2xl space-y-4 my-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#E7E5F0] dark:border-[#26214B] pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#F1EEFF] dark:bg-[#1E1A3C] border border-[#643EF3]/30 flex items-center justify-center text-[#643EF3] dark:text-[#AD55FB] text-lg">
+                  ✏️
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#171533] dark:text-[#F4F3FA]">
+                    Edit Profile & Picture
+                  </h3>
+                  <p className="text-[11px] text-[#68657D] dark:text-[#A09DB8]">
+                    Change photo, emoji, or companion details
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(false)}
+                className="p-1.5 rounded-lg text-[#68657D] hover:text-[#171533] dark:hover:text-[#F4F3FA] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editProfileError && (
+              <div className="p-3 rounded-xl bg-[#E4586E]/10 border border-[#E4586E]/30 text-[#E4586E] dark:text-[#F28FA3] text-xs flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{editProfileError}</span>
+              </div>
+            )}
+
+            {/* Profile Avatar Selector (Emoji, Upload Photo, Presets) */}
+            <AvatarSelector
+              value={editAvatar}
+              onChange={setEditAvatar}
+              companionName={editName}
+            />
+
+            {/* Name */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1">
+                Companion Name
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Priya, Maya..."
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveProfile()}
+                className="w-full px-3 py-2 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs sm:text-sm focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20"
+              />
+            </div>
+
+            {/* Scenario */}
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1">
+                Context / Vibe <span className="lowercase font-normal text-[#68657D]/70">(optional)</span>
+              </label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Best friend from college, talks casually..."
+                value={editScenario}
+                onChange={(e) => setEditScenario(e.target.value)}
+                className="w-full p-2.5 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20 resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#E7E5F0] dark:border-[#26214B]">
+              <button
+                type="button"
+                onClick={() => setShowEditProfileModal(false)}
+                className="py-2 px-4 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] text-xs font-semibold text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingProfile}
+                onClick={handleSaveProfile}
+                className="py-2 px-5 rounded-xl bg-[#643EF3] hover:bg-[#3A1ABB] active:scale-[0.99] text-white text-xs sm:text-sm font-semibold shadow-md shadow-[#643EF3]/25 transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2"
+              >
+                {savingProfile ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

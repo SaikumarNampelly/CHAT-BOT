@@ -14,6 +14,11 @@ export const useChatStore = create(
       setActiveCompanion: (companion) => set({ activeCompanion: companion, messages: [] }),
       setMessages: (messages) => set({ messages }),
 
+      updateCompanion: (updatedCompanion) => set((state) => ({
+        companions: state.companions.map((c) => (c.id === updatedCompanion.id ? updatedCompanion : c)),
+        activeCompanion: state.activeCompanion?.id === updatedCompanion.id ? updatedCompanion : state.activeCompanion,
+      })),
+
       removeCompanion: (companionId) => set((state) => ({
         companions: state.companions.filter((c) => c.id !== companionId),
         activeCompanion: state.activeCompanion?.id === companionId ? null : state.activeCompanion,

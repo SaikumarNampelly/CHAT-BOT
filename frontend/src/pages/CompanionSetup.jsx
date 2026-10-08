@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useChatStore } from '../store/chatStore';
 import { useThemeStore } from '../store/themeStore';
-import EmojiPicker from 'emoji-picker-react';
+import AvatarSelector from '../components/AvatarSelector';
 import Toast from '../components/Toast';
 
 const GENDER_OPTIONS = [
@@ -49,8 +49,7 @@ export default function CompanionSetup() {
   const [scenario, setScenario]           = useState('');
   const [error, setError]                 = useState('');
   const [loading, setLoading]             = useState(false);
-  const [emoji, setEmoji]                 = useState('🫂');
-  const [showPicker, setShowPicker]       = useState(false);
+  const [emoji, setEmoji]                 = useState('🌸');
 
   const handleCreate = async () => {
     if (!companionName.trim()) {
@@ -121,35 +120,13 @@ export default function CompanionSetup() {
           </p>
         </div>
 
-        {/* Profile Icon selector */}
-        <div className="flex flex-col items-center mb-6">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#9E9AB3] mb-2">
-            Profile Icon
-          </span>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowPicker(!showPicker)}
-              title="Choose Profile Emoji"
-              className="w-20 h-20 rounded-full border-2 border-dashed border-[#643EF3] dark:border-[#8D6BFF] bg-[#F1EEFF] dark:bg-[#643EF3]/15 flex items-center justify-center text-4xl shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
-            >
-              {emoji}
-            </button>
-            {showPicker && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 z-50 mt-3 shadow-2xl rounded-2xl overflow-hidden">
-                <EmojiPicker
-                  onEmojiClick={(e) => {
-                    setEmoji(e.emoji);
-                    setShowPicker(false);
-                  }}
-                  theme={theme === 'dark' ? 'dark' : 'light'}
-                />
-              </div>
-            )}
-          </div>
-          <span className="text-xs text-[#68657D] dark:text-[#9E9AB3] mt-2">
-            Click to change emoji
-          </span>
+        {/* Profile Avatar selector */}
+        <div className="mb-6">
+          <AvatarSelector
+            value={emoji}
+            onChange={setEmoji}
+            companionName={companionName}
+          />
         </div>
 
         {/* Companion Name */}
