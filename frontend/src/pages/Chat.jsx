@@ -64,6 +64,7 @@ export default function Chat() {
   const [createChatError, setCreateChatError] = useState('');
 
   const bottomRef = useRef(null);
+  const inputRef = useRef(null);
   const emojiPickerRef = useRef(null);
   const modalEmojiRef = useRef(null);
   const searchInputRef = useRef(null);
@@ -202,21 +203,33 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
+  // Keep input focused automatically whenever streaming finishes or companion changes
+  useEffect(() => {
+    if (!isStreaming) {
+      inputRef.current?.focus();
+    }
+  }, [isStreaming, activeCompanion?.id]);
+
   const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text || isStreaming || !activeCompanion) return;
     setInput('');
     setErrorMsg('');
+    inputRef.current?.focus();
     addMessage({ role: 'user', content: text, id: Date.now(), created_at: new Date().toISOString() });
     startStreaming();
     streamMessage(
       { companionId: activeCompanion.id, message: text },
       (chunk) => appendStreamChunk(chunk),
-      () => finishStreaming(),
+      () => {
+        finishStreaming();
+        inputRef.current?.focus();
+      },
       (err) => {
         console.error(err);
         setErrorMsg(err);
         cancelStreaming();
+        inputRef.current?.focus();
       }
     );
   }, [input, isStreaming, activeCompanion, addMessage, appendStreamChunk, cancelStreaming, finishStreaming, startStreaming]);
@@ -224,7 +237,9 @@ export default function Chat() {
   const handleKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      if (!isStreaming && input.trim()) {
+        handleSend();
+      }
     }
   };
 
@@ -765,12 +780,18 @@ export default function Chat() {
 
             {/* Input Composer */}
             <footer className="p-3 sm:p-4 bg-white/95 dark:bg-[#141228]/95 border-t border-[#E7E5F0] dark:border-[#26214B] backdrop-blur-md flex items-center gap-2">
-              <div className="relative flex-1 flex items-center bg-[#F8F7FC] dark:bg-[#0C0A1B] border border-[#E7E5F0] dark:border-[#26214B] focus-within:border-[#643EF3] focus-within:ring-2 focus-within:ring-[#643EF3]/20 rounded-full px-3 py-1.5 shadow-xs transition-all">
+              <div
+                onClick={() => inputRef.current?.focus()}
+                className="relative flex-1 flex items-center bg-[#F8F7FC] dark:bg-[#0C0A1B] border border-[#E7E5F0] dark:border-[#26214B] focus-within:border-[#643EF3] focus-within:ring-2 focus-within:ring-[#643EF3]/20 rounded-full px-3 py-1.5 shadow-xs transition-all cursor-text"
+              >
                 {/* Emoji button */}
                 <button
                   type="button"
                   title="Emoji"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowEmojiPicker(!showEmojiPicker);
+                  }}
                   className="p-1 text-[#68657D] dark:text-[#A09DB8] hover:text-[#643EF3] dark:hover:text-[#AD55FB] transition-colors cursor-pointer shrink-0"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -784,21 +805,25 @@ export default function Chat() {
                 {showEmojiPicker && (
                   <div className="absolute bottom-full left-0 mb-3 z-50 shadow-2xl rounded-2xl overflow-hidden" ref={emojiPickerRef}>
                     <EmojiPicker
-                      onEmojiClick={(emoji) => setInput(prev => prev + emoji.emoji)}
+                      onEmojiClick={(emoji) => {
+                        setInput(prev => prev + emoji.emoji);
+                        inputRef.current?.focus();
+                      }}
                       theme={theme === 'dark' ? 'dark' : 'light'}
                     />
                   </div>
                 )}
 
                 <input
+                  ref={inputRef}
                   id="message-input"
                   type="text"
-                  placeholder="Type a message..."
+                  placeholder={isStreaming ? "Thinking..." : "Type a message..."}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKey}
-                  disabled={isStreaming}
                   autoComplete="off"
+                  autoFocus
                   className="flex-1 bg-transparent px-2.5 py-1 text-xs sm:text-sm text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 dark:placeholder-[#A09DB8]/60 focus:outline-none"
                 />
               </div>
@@ -838,7 +863,10 @@ export default function Chat() {
               <button
                 type="button"
                 id="send-btn"
-                onClick={handleSend}
+                onClick={() => {
+                  handleSend();
+                  inputRef.current?.focus();
+                }}
                 disabled={isStreaming || !input.trim()}
                 aria-label="Send"
                 className="w-10 h-10 rounded-full bg-[#643EF3] hover:bg-[#3A1ABB] active:scale-95 text-white flex items-center justify-center shadow-md shadow-[#643EF3]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
