@@ -48,6 +48,7 @@ export default function Chat() {
 
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [companionsLoaded, setCompanionsLoaded] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [modalConfig, setModalConfig] = useState(null);
@@ -125,7 +126,12 @@ export default function Chat() {
           setActiveCompanion(null);
         }
       })
-      .catch(() => { });
+      .catch(() => {
+        setActiveCompanion(null);
+      })
+      .finally(() => {
+        setCompanionsLoaded(true);
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,7 +171,7 @@ export default function Chat() {
 
   // Load chat history and trigger greeting if new
   useEffect(() => {
-    if (!activeCompanion?.id) return;
+    if (!companionsLoaded || !activeCompanion?.id) return;
     let isMounted = true;
 
     const loadHistoryAndGreet = async () => {
@@ -192,8 +198,13 @@ export default function Chat() {
             }
           );
         }
-      } catch {
-        if (isMounted) setMessages([]);
+      } catch (err) {
+        if (isMounted) {
+          setMessages([]);
+          if (err.response?.status === 403 || err.response?.status === 404) {
+            setActiveCompanion(null);
+          }
+        }
       } finally {
         if (isMounted) setLoadingHistory(false);
       }
@@ -201,7 +212,7 @@ export default function Chat() {
 
     loadHistoryAndGreet();
     return () => { isMounted = false; };
-  }, [activeCompanion?.id, appendStreamChunk, cancelStreaming, finishStreaming, setMessages, startStreaming]);
+  }, [companionsLoaded, activeCompanion?.id, appendStreamChunk, cancelStreaming, finishStreaming, setActiveCompanion, setMessages, startStreaming]);
 
   // Scroll to bottom on new message
   useEffect(() => {
@@ -1032,7 +1043,7 @@ export default function Chat() {
 
             {/* Form Fields */}
             <div className="space-y-3.5">
-              {/* Profile Avatar (Emoji, Upload Photo, Presets) */}
+              {/* Profile Avatar (Emoji, Upload Photo) */}
               <AvatarSelector
                 value={newEmoji}
                 onChange={setNewEmoji}
@@ -1167,7 +1178,7 @@ export default function Chat() {
               </div>
             )}
 
-            {/* Profile Avatar Selector (Emoji, Upload Photo, Presets) */}
+            {/* Profile Avatar Selector (Emoji, Upload Photo) */}
             <AvatarSelector
               value={editAvatar}
               onChange={setEditAvatar}

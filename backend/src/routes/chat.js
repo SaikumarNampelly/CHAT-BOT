@@ -15,12 +15,12 @@ router.get('/history/:companionId', async (req, res) => {
     // Verify companion belongs to this user
     const { data: companion } = await supabase
       .from('companions')
-      .select('id')
+      .select('id, user_id')
       .eq('id', companionId)
-      .eq('user_id', req.user.id)
       .single();
 
-    if (!companion) return res.status(403).json({ error: 'Access denied.' });
+    if (!companion) return res.status(404).json({ error: 'Companion not found.' });
+    if (companion.user_id !== req.user.id) return res.status(403).json({ error: 'Access denied.' });
 
     const { data: messages, error } = await supabase
       .from('messages')
@@ -52,10 +52,10 @@ router.post('/message', async (req, res) => {
       .from('companions')
       .select('*')
       .eq('id', companionId)
-      .eq('user_id', req.user.id)
       .single();
 
-    if (cErr || !companion) return res.status(403).json({ error: 'Companion not found.' });
+    if (cErr || !companion) return res.status(404).json({ error: 'Companion not found.' });
+    if (companion.user_id !== req.user.id) return res.status(403).json({ error: 'Access denied.' });
 
     // Fetch last 20 messages for context
     const { data: history } = await supabase
@@ -152,10 +152,10 @@ router.post('/greet/:companionId', async (req, res) => {
       .from('companions')
       .select('*')
       .eq('id', companionId)
-      .eq('user_id', req.user.id)
       .single();
 
-    if (cErr || !companion) return res.status(403).json({ error: 'Companion not found.' });
+    if (cErr || !companion) return res.status(404).json({ error: 'Companion not found.' });
+    if (companion.user_id !== req.user.id) return res.status(403).json({ error: 'Access denied.' });
 
     // Check if any messages already exist (including in-progress placeholders) — don't double-greet
     const { data: existing } = await supabase

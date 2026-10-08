@@ -1,12 +1,8 @@
 import { useState, useRef } from 'react';
-import EmojiPicker from 'emoji-picker-react';
-import { useThemeStore } from '../store/themeStore';
-import { QUICK_EMOJIS, PRESET_AVATARS, isImageAvatar, compressImageFile } from '../utils/avatar';
+import { QUICK_EMOJIS, isImageAvatar, compressImageFile } from '../utils/avatar';
 
 export default function AvatarSelector({ value, onChange, companionName = '' }) {
-  const { theme } = useThemeStore();
   const [activeTab, setActiveTab] = useState(isImageAvatar(value) ? 'photo' : 'emoji');
-  const [showFullPicker, setShowFullPicker] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef(null);
 
@@ -110,7 +106,7 @@ export default function AvatarSelector({ value, onChange, companionName = '' }) 
               : 'text-[#68657D] dark:text-[#A09DB8] hover:text-[#171533]'
           }`}
         >
-          🌸 Emojis
+          🌸 Emoji
         </button>
         <button
           type="button"
@@ -123,63 +119,25 @@ export default function AvatarSelector({ value, onChange, companionName = '' }) 
         >
           📷 Photo
         </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('presets')}
-          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-            activeTab === 'presets'
-              ? 'bg-white dark:bg-[#1E1A3C] text-[#643EF3] dark:text-[#AD55FB] shadow-xs'
-              : 'text-[#68657D] dark:text-[#A09DB8] hover:text-[#171533]'
-          }`}
-        >
-          🎭 Presets
-        </button>
       </div>
 
-      {/* Tab: Emojis */}
+      {/* Tab: Emojis (5 useful emojis) */}
       {activeTab === 'emoji' && (
-        <div className="space-y-2">
-          <div className="grid grid-cols-8 gap-1.5">
-            {QUICK_EMOJIS.map((em) => (
-              <button
-                key={em}
-                type="button"
-                onClick={() => {
-                  onChange(em);
-                  setShowFullPicker(false);
-                }}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-all cursor-pointer ${
-                  value === em
-                    ? 'border-2 border-[#643EF3] bg-[#F1EEFF] dark:bg-[#1E1A3C] scale-110 shadow-xs'
-                    : 'border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] hover:scale-105 hover:border-[#643EF3]/40'
-                }`}
-              >
-                {em}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative pt-1">
+        <div className="grid grid-cols-5 gap-2 pt-0.5">
+          {QUICK_EMOJIS.map((em) => (
             <button
+              key={em}
               type="button"
-              onClick={() => setShowFullPicker(!showFullPicker)}
-              className="w-full py-1.5 px-3 rounded-xl border border-dashed border-[#643EF3]/40 text-[#643EF3] dark:text-[#AD55FB] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1A3C] text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              onClick={() => onChange(em)}
+              className={`h-11 rounded-xl flex items-center justify-center text-xl transition-all cursor-pointer ${
+                value === em
+                  ? 'border-2 border-[#643EF3] bg-[#F1EEFF] dark:bg-[#1E1A3C] scale-105 shadow-xs'
+                  : 'border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] hover:scale-105 hover:border-[#643EF3]/40'
+              }`}
             >
-              <span>{showFullPicker ? 'Hide Emoji Picker' : 'Browse All Emojis...'}</span>
+              {em}
             </button>
-
-            {showFullPicker && (
-              <div className="mt-2 shadow-2xl rounded-2xl overflow-hidden border border-[#E7E5F0] dark:border-[#26214B]">
-                <EmojiPicker
-                  onEmojiClick={(e) => {
-                    onChange(e.emoji);
-                    setShowFullPicker(false);
-                  }}
-                  theme={theme === 'dark' ? 'dark' : 'light'}
-                />
-              </div>
-            )}
-          </div>
+          ))}
         </div>
       )}
 
@@ -213,36 +171,6 @@ export default function AvatarSelector({ value, onChange, companionName = '' }) 
               Supports PNG, JPG, WEBP • Automatically cropped to square
             </div>
           </button>
-        </div>
-      )}
-
-      {/* Tab: Presets */}
-      {activeTab === 'presets' && (
-        <div className="grid grid-cols-3 gap-2">
-          {PRESET_AVATARS.map((p) => {
-            const isSelected = value === p.url;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onChange(p.url)}
-                className={`p-2 rounded-2xl border text-center transition-all cursor-pointer group ${
-                  isSelected
-                    ? 'border-[#643EF3] bg-[#F1EEFF] dark:bg-[#1E1A3C] ring-2 ring-[#643EF3]/40 shadow-xs'
-                    : 'border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] hover:border-[#643EF3]/40'
-                }`}
-              >
-                <img
-                  src={p.url}
-                  alt={p.label}
-                  className="w-12 h-12 rounded-xl object-cover mx-auto mb-1 group-hover:scale-105 transition-transform"
-                />
-                <span className="block text-[11px] font-semibold text-[#171533] dark:text-[#F4F3FA] truncate">
-                  {p.label}
-                </span>
-              </button>
-            );
-          })}
         </div>
       )}
     </div>

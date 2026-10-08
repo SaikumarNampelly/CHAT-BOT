@@ -1,16 +1,5 @@
-export const QUICK_EMOJIS = [
-  '🌸', '🫂', '✨', '⚡', '💖', '🦊', '🐱', '🦋',
-  '🌟', '💎', '🌿', '☕', '🌷', '🎀', '🧸', '🌺'
-];
+export const QUICK_EMOJIS = ['🌸', '✨', '🤖', '💖', '🫂'];
 
-export const PRESET_AVATARS = [
-  { id: 'av1', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&auto=format&fit=crop&q=80', label: 'Priya' },
-  { id: 'av2', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80', label: 'Ananya' },
-  { id: 'av3', url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&auto=format&fit=crop&q=80', label: 'Sneha' },
-  { id: 'av4', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80', label: 'Arjun' },
-  { id: 'av5', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80', label: 'Karthik' },
-  { id: 'av6', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=200&auto=format&fit=crop&q=80', label: 'Rahul' },
-];
 
 export function isImageAvatar(str) {
   if (!str) return false;

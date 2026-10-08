@@ -45,6 +45,13 @@ export const useChatStore = create(
       cancelStreaming: () => set({ isStreaming: false, streamingText: '' }),
 
       clearHistory: () => set({ messages: [] }),
+      resetChatState: () => set({
+        companions: [],
+        activeCompanion: null,
+        messages: [],
+        isStreaming: false,
+        streamingText: '',
+      }),
     }),
     {
       name: 'sathi-chat',
