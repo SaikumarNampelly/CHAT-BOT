@@ -38,9 +38,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/companions', companionRoutes);
 app.use('/api/chat', chatRoutes);
 
-// ─── Health Check ─────────────────────────────────────────────
+// ─── Health & Root Checks ─────────────────────────────────────
+app.get('/', (req, res) => {
+  res.json({ status: 'ok', message: 'TalkMate API is live 🚀' });
+});
+
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Telugu AI Companion backend is running 🚀' });
+  res.json({ status: 'ok', message: 'TalkMate backend is running 🚀' });
 });
 
 // ─── 404 fallback for unknown API routes ──────────────────────
@@ -54,14 +58,12 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
 });
 
-
-
 const server = app.listen(PORT, () => {
-  console.log(`✅ Backend running on http://localhost:${PORT}`);
+  console.log(`✅ Backend running on port ${PORT}`);
 });
 
 server.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
+  if (err.code === 'EADDRINUSE' && process.platform === 'win32') {
     // console.error(`❌ Port ${PORT} is in use. Killing the blocking process...`);
     const { execSync } = require('child_process');
     try {
