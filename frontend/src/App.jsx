@@ -87,7 +87,7 @@ function AnimatedRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="relative min-h-screen min-h-dvh w-full bg-slate-50 text-slate-900 dark:bg-[#060a0a] dark:text-slate-100 font-sans flex flex-col">
+      <div className="relative min-h-screen min-h-dvh w-full bg-[#F8F7FC] text-[#171533] dark:bg-[#0C0A1B] dark:text-[#F4F3FA] font-sans flex flex-col selection:bg-[#F1EEFF] selection:text-[#643EF3]">
         <TokenCascadeOverlay />
         {/* Modern Portal Background Grid */}
         <div className="portal-grid" aria-hidden="true">

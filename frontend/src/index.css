@@ -2,9 +2,58 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-brand-primary: #643EF3;
+  --color-brand-primary-dark: #3A1ABB;
+  --color-brand-secondary: #4B8BFA;
+  --color-brand-cyan: #23C4F0;
+  --color-brand-pink: #F28FA3;
+  --color-brand-text: #171533;
+  --color-brand-muted: #68657D;
+  --color-brand-bg: #F8F7FC;
+  --color-brand-surface: #FFFFFF;
+  --color-brand-border: #E7E5F0;
+  --color-brand-hover: #F1EEFF;
+  --color-brand-success: #22B573;
+  --color-brand-warning: #F4A62A;
+  --color-brand-error: #E4586E;
+}
+
 :root {
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   color-scheme: light dark;
+
+  /* Global TalkMate Color System */
+  --brand-primary: #643EF3;
+  --brand-primary-dark: #3A1ABB;
+  --brand-secondary: #4B8BFA;
+  --brand-cyan: #23C4F0;
+  --brand-pink: #F28FA3;
+
+  /* Surfaces & Text */
+  --brand-text: #171533;
+  --brand-muted: #68657D;
+  --brand-bg: #F8F7FC;
+  --brand-surface: #FFFFFF;
+  --brand-border: #E7E5F0;
+  --brand-hover: #F1EEFF;
+
+  /* Status Colors */
+  --brand-success: #22B573;
+  --brand-warning: #F4A62A;
+  --brand-error: #E4586E;
+
+  /* Signature Brand Gradient */
+  --brand-gradient: linear-gradient(135deg, #23C4F0 0%, #4B8BFA 35%, #643EF3 68%, #AD55FB 100%);
+}
+
+.dark {
+  --brand-text: #F4F3FA;
+  --brand-muted: #9E9AB3;
+  --brand-bg: #0C0A1B;
+  --brand-surface: #141228;
+  --brand-border: #262247;
+  --brand-hover: #1E1A3C;
 }
 
 html, body {
@@ -12,6 +61,8 @@ html, body {
   width: 100%;
   margin: 0;
   padding: 0;
+  background-color: var(--brand-bg);
+  color: var(--brand-text);
 }
 
 #root {
@@ -30,24 +81,36 @@ html, body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.25);
+  background: rgba(100, 62, 243, 0.18);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(100, 116, 139, 0.4);
+  background: rgba(100, 62, 243, 0.35);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(45, 212, 191, 0.15);
+  background: rgba(100, 62, 243, 0.25);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(45, 212, 191, 0.3);
+  background: rgba(100, 62, 243, 0.45);
 }
 
 /* ========================================================
-   Modern Portal Background Grid (Tech / Architectural Grid)
+   Signature Brand Gradient Utility Classes
    ======================================================== */
+.brand-gradient {
+  background: linear-gradient(135deg, #23C4F0 0%, #4B8BFA 35%, #643EF3 68%, #AD55FB 100%);
+}
 
+.brand-gradient-text {
+  background: linear-gradient(135deg, #23C4F0 0%, #4B8BFA 35%, #643EF3 68%, #AD55FB 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ========================================================
+   Modern Portal Background Grid (Friendly Violet Ambient)
+   ======================================================== */
 .portal-grid {
   position: fixed;
   inset: 0;
@@ -59,12 +122,12 @@ html, body {
 .portal-grid-glow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 75% 55% at 50% 20%, rgba(20, 184, 166, 0.08), transparent 75%);
+  background: radial-gradient(ellipse 75% 55% at 50% 15%, rgba(100, 62, 243, 0.05), transparent 75%);
   pointer-events: none;
 }
 
 .dark .portal-grid-glow {
-  background: radial-gradient(ellipse 75% 55% at 50% 20%, rgba(20, 184, 166, 0.14), transparent 75%);
+  background: radial-gradient(ellipse 75% 55% at 50% 15%, rgba(100, 62, 243, 0.12), transparent 75%);
 }
 
 .portal-grid-lines {
@@ -72,37 +135,36 @@ html, body {
   inset: 0;
   background-size: 38px 38px;
   background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.15) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.15) 1px, transparent 1px);
-  mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 30%, transparent 92%);
-  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 30%, transparent 92%);
+    linear-gradient(to right, rgba(100, 62, 243, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 62, 243, 0.05) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 25%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 25%, transparent 90%);
 }
 
 .dark .portal-grid-lines {
   background-image:
-    linear-gradient(to right, rgba(45, 212, 191, 0.08) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(45, 212, 191, 0.08) 1px, transparent 1px);
+    linear-gradient(to right, rgba(100, 62, 243, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(100, 62, 243, 0.08) 1px, transparent 1px);
 }
 
 .portal-grid-dots {
   position: absolute;
   inset: 0;
   background-size: 38px 38px;
-  background-image: radial-gradient(circle, rgba(148, 163, 184, 0.22) 1px, transparent 1px);
-  mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 30%, transparent 92%);
-  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 30%, transparent 92%);
+  background-image: radial-gradient(circle, rgba(100, 62, 243, 0.09) 1px, transparent 1px);
+  mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 25%, transparent 90%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 85% at 50% 45%, black 25%, transparent 90%);
 }
 
 .dark .portal-grid-dots {
-  background-image: radial-gradient(circle, rgba(45, 212, 191, 0.18) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(100, 62, 243, 0.15) 1px, transparent 1px);
 }
-
 
 /* Pulse animation for voice recognition */
 @keyframes voice-pulse {
-  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
-  70% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(228, 88, 110, 0.5); }
+  70% { transform: scale(1.06); box-shadow: 0 0 0 10px rgba(228, 88, 110, 0); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(228, 88, 110, 0); }
 }
 
 .animate-voice-pulse {
@@ -112,25 +174,16 @@ html, body {
 /* ========================================================
    Token Cascade Page-Level Theme Transition (500ms Snappy & Smooth)
    ======================================================== */
-
 .token-cascade-backdrop {
   animation: token-backdrop-fade 500ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
   will-change: opacity, backdrop-filter;
 }
 
 @keyframes token-backdrop-fade {
-  0% {
-    opacity: 0;
-  }
-  25% {
-    opacity: 0.98;
-  }
-  65% {
-    opacity: 0.98;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { opacity: 0; }
+  25% { opacity: 0.98; }
+  65% { opacity: 0.98; }
+  100% { opacity: 0; }
 }
 
 /* Floating Bokeh Sparks */
@@ -162,7 +215,7 @@ html, body {
   }
 }
 
-/* Fluid Token Cells (Compact size & 250ms lifespan) */
+/* Fluid Token Cells */
 .token-cell {
   animation: token-cell-anim 250ms cubic-bezier(0.25, 1, 0.5, 1) both;
   will-change: transform, opacity, filter;
@@ -191,7 +244,7 @@ html, body {
   }
 }
 
-/* Optical blur-dissolve glyph morphing (250ms) */
+/* Optical blur-dissolve glyph morphing */
 .token-glyph-start,
 .token-glyph-end {
   position: absolute;
@@ -259,7 +312,3 @@ html, body {
     display: none !important;
   }
 }
-
-
-
-

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { useThemeStore } from '../store/themeStore';
+import Toast from '../components/Toast';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -27,13 +28,16 @@ export default function Register() {
 
   return (
     <div className="w-full flex-1 flex flex-col items-center justify-start p-4 sm:p-6 py-8 sm:py-12">
+      {/* Top Middle Floating Error Toast */}
+      <Toast message={error} type="error" onClose={() => setError('')} duration={5000} />
+
       {/* Top right theme toggle */}
       <button
         type="button"
         onClick={toggleTheme}
         aria-label="Toggle theme"
         title="Toggle theme"
-        className="fixed top-5 right-5 z-20 p-2.5 rounded-full border border-slate-200 dark:border-teal-500/20 bg-white/70 dark:bg-[#090f0e]/80 text-slate-700 dark:text-teal-400 backdrop-blur-md shadow-sm hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        className="fixed top-5 right-5 z-20 p-2.5 rounded-full border border-[#E7E5F0] dark:border-[#262247] bg-white/80 dark:bg-[#141228]/80 text-[#68657D] dark:text-[#9E9AB3] hover:text-[#643EF3] dark:hover:text-[#8D6BFF] backdrop-blur-md shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer"
       >
         {theme === 'dark' ? (
           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -48,44 +52,37 @@ export default function Register() {
       </button>
 
       {/* Main card */}
-      <div className="w-full max-w-md my-auto rounded-3xl border border-slate-200/90 dark:border-teal-500/20 bg-white/85 dark:bg-[#0c1413]/85 backdrop-blur-xl p-8 sm:p-10 shadow-2xl shadow-slate-300/40 dark:shadow-black/50 transition-all">
+      <div className="w-full max-w-md my-auto rounded-3xl border border-[#E7E5F0] dark:border-[#262247] bg-white/95 dark:bg-[#141228]/95 backdrop-blur-xl p-8 sm:p-10 shadow-xl shadow-[#171533]/5 dark:shadow-black/60 transition-all">
         {/* Brand header */}
         <div className="flex flex-col items-center text-center mb-7">
           <div className="relative mb-3.5 group">
-            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-teal-400 via-blue-500 to-purple-600 opacity-30 blur-md group-hover:opacity-45 transition-opacity"></div>
+            <div className="absolute -inset-1.5 rounded-2xl brand-gradient opacity-35 blur-md group-hover:opacity-50 transition-opacity"></div>
             <img
               src="/talkmate-icon.png"
               alt="TalkMate"
-              className="relative w-16 h-16 rounded-2xl object-cover shadow-lg border border-white/20"
+              className="relative w-16 h-16 rounded-2xl object-cover shadow-md border border-white/20"
             />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#171533] dark:text-[#F4F3FA]">
+            Talk<span className="text-[#643EF3] dark:text-[#8D6BFF]">Mate</span>
           </h1>
-          <p className="text-xs font-medium text-teal-600 dark:text-teal-400 mt-1 uppercase tracking-wider">
+          <p className="text-xs font-semibold text-[#68657D] dark:text-[#9E9AB3] mt-1 uppercase tracking-wider">
             Feel the connection
           </p>
         </div>
 
         <div className="text-center mb-6">
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Create your account</h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Join and meet your companion</p>
+          <h2 className="text-xl font-bold text-[#171533] dark:text-[#F4F3FA]">Create your account</h2>
+          <p className="text-sm text-[#68657D] dark:text-[#9E9AB3] mt-1">Join and meet your companion</p>
         </div>
-
-        {error && (
-          <div className="mb-5 p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-sm flex items-center gap-2">
-            <span>⚠️</span>
-            <span>{error}</span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5" htmlFor="name">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#171533] dark:text-[#F4F3FA] mb-1.5" htmlFor="name">
               Your Name
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-slate-400 dark:text-teal-500/60 pointer-events-none">
+              <span className="absolute left-3.5 text-[#68657D] dark:text-[#9E9AB3] pointer-events-none">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
@@ -94,7 +91,7 @@ export default function Register() {
               <input
                 id="name"
                 type="text"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 dark:focus:border-teal-400 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7E5F0] dark:border-[#262247] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-sm focus:outline-none focus:ring-2 focus:ring-[#643EF3]/20 focus:border-[#643EF3] transition-all"
                 placeholder="e.g. Sai Kumar"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -104,11 +101,11 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5" htmlFor="reg-email">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#171533] dark:text-[#F4F3FA] mb-1.5" htmlFor="reg-email">
               Email
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-slate-400 dark:text-teal-500/60 pointer-events-none">
+              <span className="absolute left-3.5 text-[#68657D] dark:text-[#9E9AB3] pointer-events-none">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                   <polyline points="22,6 12,13 2,6" />
@@ -117,7 +114,7 @@ export default function Register() {
               <input
                 id="reg-email"
                 type="email"
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 dark:focus:border-teal-400 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#E7E5F0] dark:border-[#262247] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-sm focus:outline-none focus:ring-2 focus:ring-[#643EF3]/20 focus:border-[#643EF3] transition-all"
                 placeholder="you@email.com"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -127,11 +124,11 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1.5" htmlFor="reg-password">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-[#171533] dark:text-[#F4F3FA] mb-1.5" htmlFor="reg-password">
               Password
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-slate-400 dark:text-teal-500/60 pointer-events-none">
+              <span className="absolute left-3.5 text-[#68657D] dark:text-[#9E9AB3] pointer-events-none">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" />
@@ -140,7 +137,7 @@ export default function Register() {
               <input
                 id="reg-password"
                 type={showPassword ? 'text' : 'password'}
-                className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500 dark:focus:border-teal-400 transition-all"
+                className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-[#E7E5F0] dark:border-[#262247] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-sm focus:outline-none focus:ring-2 focus:ring-[#643EF3]/20 focus:border-[#643EF3] transition-all"
                 placeholder="Minimum 6 characters"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -149,7 +146,7 @@ export default function Register() {
               />
               <button
                 type="button"
-                className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                className="absolute right-3 p-1 text-[#68657D] hover:text-[#171533] dark:text-[#9E9AB3] dark:hover:text-[#F4F3FA] transition-colors cursor-pointer"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                 title={showPassword ? 'Hide password' : 'Show password'}
@@ -175,7 +172,7 @@ export default function Register() {
             id="register-btn"
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-medium text-sm tracking-wide shadow-lg shadow-teal-600/25 hover:shadow-teal-500/35 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full mt-2 py-3 px-4 rounded-xl bg-[#643EF3] hover:bg-[#3A1ABB] active:bg-[#3A1ABB] text-white font-semibold text-sm tracking-wide shadow-md shadow-[#643EF3]/25 hover:shadow-lg hover:shadow-[#643EF3]/35 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
               <>
@@ -191,9 +188,9 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-6">
+        <p className="text-center text-xs sm:text-sm text-[#68657D] dark:text-[#9E9AB3] mt-6">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-teal-600 dark:text-teal-400 hover:underline">
+          <Link to="/login" className="font-semibold text-[#643EF3] dark:text-[#8D6BFF] hover:underline">
             Sign in
           </Link>
         </p>

@@ -31,11 +31,6 @@ function getDateGroupLabel(isoString) {
   }
 }
 
-const QUICK_PRESETS = [
-  { name: 'Priya', gender: 'female', emoji: '🌸', desc: 'Sweet & caring bestie' },
-  { name: 'Arjun', gender: 'male', emoji: '⚡', desc: 'Chill & supportive buddy' },
-  { name: 'Ananya', gender: 'female', emoji: '✨', desc: 'Smart & cheerful' },
-];
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -62,7 +57,6 @@ export default function Chat() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newCompanionName, setNewCompanionName] = useState('');
   const [newCompanionGender, setNewCompanionGender] = useState('female');
-  const [newUserGender, setNewUserGender] = useState('male');
   const [newScenario, setNewScenario] = useState('');
   const [newEmoji, setNewEmoji] = useState('🫂');
   const [showModalEmojiPicker, setShowModalEmojiPicker] = useState(false);
@@ -142,7 +136,7 @@ export default function Chat() {
 
     try {
       const { data: newComp } = await api.post('/companions', {
-        companion_name: `${finalEmoji}|${finalGender}|${newUserGender}|${finalName}`,
+        companion_name: `${finalEmoji}|${finalGender}|other|${finalName}`,
         role: 'friend',
         scenario: newScenario.trim(),
         language: 'tanglish',
@@ -161,10 +155,6 @@ export default function Chat() {
     } finally {
       setCreatingChat(false);
     }
-  };
-
-  const handleQuickStart = () => {
-    handleCreateCompanion('Priya', 'female', '🌸');
   };
 
   // Load chat history and trigger greeting if new
@@ -328,11 +318,11 @@ export default function Chat() {
     const name = getDispName(rawName);
     const charCode = name ? name.charCodeAt(0) : 65;
     const gradients = [
-      'from-teal-500 to-emerald-600',
-      'from-sky-500 to-blue-600',
-      'from-indigo-500 to-purple-600',
-      'from-emerald-500 to-teal-700',
-      'from-violet-500 to-indigo-700',
+      'from-[#643EF3] to-[#3A1ABB]',
+      'from-[#4B8BFA] to-[#643EF3]',
+      'from-[#23C4F0] to-[#4B8BFA]',
+      'from-[#643EF3] to-[#AD55FB]',
+      'from-[#F28FA3] to-[#643EF3]',
     ];
     return gradients[charCode % gradients.length];
   };
@@ -351,7 +341,7 @@ export default function Chat() {
   });
 
   return (
-    <div className="relative flex h-screen h-dvh w-full bg-slate-100/30 dark:bg-[#060a0a]/60 overflow-hidden">
+    <div className="relative flex h-screen h-dvh w-full bg-[#F8F7FC] text-[#171533] dark:bg-[#0C0A1B] dark:text-[#F4F3FA] overflow-hidden">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -362,30 +352,30 @@ export default function Chat() {
 
       {/* ============ SIDEBAR ============ */}
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 w-80 md:w-80 flex flex-col bg-white/95 dark:bg-[#090f0e]/95 border-r border-slate-200 dark:border-teal-500/15 backdrop-blur-xl transition-transform duration-300 ease-in-out ${
+        className={`fixed md:static inset-y-0 left-0 z-40 w-80 md:w-80 flex flex-col bg-white/95 dark:bg-[#141228]/95 border-r border-[#E7E5F0] dark:border-[#262247] backdrop-blur-xl transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
         }`}
       >
         {/* Brand & New Chat */}
-        <div className="p-4 border-b border-slate-200/80 dark:border-teal-500/10 space-y-3">
+        <div className="p-4 border-b border-[#E7E5F0] dark:border-[#262247] space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <img
                 src="/talkmate-icon.png"
                 alt="TalkMate"
-                className="w-8 h-8 rounded-xl object-cover shadow-sm ring-1 ring-slate-900/5 dark:ring-white/10"
+                className="w-8 h-8 rounded-xl object-cover shadow-sm ring-1 ring-[#171533]/5 dark:ring-white/10"
               />
               <div>
-                <span className="block font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-tight">
-                  Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
+                <span className="block font-bold text-sm tracking-tight text-[#171533] dark:text-[#F4F3FA] leading-tight">
+                  Talk<span className="text-[#643EF3] dark:text-[#8D6BFF]">Mate</span>
                 </span>
-                <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-medium tracking-wide">Feel the connection</span>
+                <span className="block text-[10px] text-[#68657D] dark:text-[#9E9AB3] font-medium tracking-wide">Feel the connection</span>
               </div>
             </div>
 
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              className="md:hidden p-1.5 rounded-lg text-[#68657D] hover:text-[#171533] dark:hover:text-[#F4F3FA] cursor-pointer"
             >
               ✕
             </button>
@@ -394,7 +384,7 @@ export default function Chat() {
           <button
             id="new-companion-btn"
             onClick={() => setShowNewChatModal(true)}
-            className="w-full py-2.5 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-teal-600/20 transition-all cursor-pointer"
+            className="w-full py-2.5 px-4 rounded-xl bg-[#643EF3] hover:bg-[#3A1ABB] active:bg-[#3A1ABB] text-white text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 shadow-md shadow-[#643EF3]/20 transition-all cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -405,7 +395,7 @@ export default function Chat() {
 
           {/* Search bar with shortcut */}
           <div className="relative flex items-center">
-            <svg className="absolute left-3 w-3.5 h-3.5 text-slate-400 dark:text-teal-500/60 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg className="absolute left-3 w-3.5 h-3.5 text-[#68657D] dark:text-[#9E9AB3] pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -415,18 +405,18 @@ export default function Chat() {
               placeholder="Search chats..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-16 py-1.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50 dark:bg-[#060a0a]/60 text-xs text-slate-900 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500 transition-all"
+              className="w-full pl-8 pr-16 py-1.5 rounded-xl border border-[#E7E5F0] dark:border-[#262247] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-xs text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 focus:outline-none focus:ring-1 focus:ring-[#643EF3] transition-all"
             />
-            <span className="absolute right-2 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-200/70 dark:bg-teal-950/60 text-slate-500 dark:text-teal-400/80 border border-slate-300/50 dark:border-teal-500/20 pointer-events-none">
+            <span className="absolute right-2 px-1.5 py-0.5 rounded text-[9px] font-medium bg-[#F1EEFF] dark:bg-[#1E1A3C] text-[#643EF3] dark:text-[#8D6BFF] border border-[#E7E5F0] dark:border-[#262247] pointer-events-none">
               Ctrl+K
             </span>
           </div>
         </div>
 
         {/* Section Heading */}
-        <div className="px-4 py-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        <div className="px-4 py-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#9E9AB3]">
           <span>Chats</span>
-          <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-slate-100 dark:bg-teal-950/50 text-slate-600 dark:text-teal-400">
+          <span className="text-[11px] px-1.5 py-0.2 rounded-full bg-[#F1EEFF] dark:bg-[#1E1A3C] text-[#643EF3] dark:text-[#8D6BFF]">
             {filteredCompanions.length}
           </span>
         </div>
@@ -434,7 +424,7 @@ export default function Chat() {
         {/* Companion List */}
         <div className="flex-1 overflow-y-auto px-3 py-1 space-y-1">
           {filteredCompanions.length === 0 && (
-            <div className="text-center py-10 px-4 text-xs text-slate-400 dark:text-slate-500 whitespace-pre-line leading-relaxed">
+            <div className="text-center py-10 px-4 text-xs text-[#68657D] dark:text-[#9E9AB3] whitespace-pre-line leading-relaxed">
               {searchQuery ? 'No chats found matching search.' : 'No chats yet.\nCreate one to start.'}
             </div>
           )}
@@ -451,8 +441,8 @@ export default function Chat() {
                 }}
                 className={`group relative flex items-center gap-3 p-2.5 rounded-2xl cursor-pointer transition-all ${
                   isActive
-                    ? 'bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-500/30 text-teal-950 dark:text-white shadow-xs'
-                    : 'hover:bg-slate-100 dark:hover:bg-[#111e1c]/60 text-slate-700 dark:text-slate-300 border border-transparent'
+                    ? 'bg-[#F1EEFF] dark:bg-[#1E1A3C] border border-[#643EF3]/30 text-[#171533] dark:text-[#F4F3FA] shadow-xs'
+                    : 'hover:bg-[#F8F7FC] dark:hover:bg-[#141228]/80 text-[#171533] dark:text-[#F4F3FA] border border-transparent'
                 }`}
               >
                 {/* Avatar */}
@@ -463,16 +453,16 @@ export default function Chat() {
                 {/* Details */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-xs sm:text-sm truncate text-slate-800 dark:text-slate-100">
+                    <span className="font-semibold text-xs sm:text-sm truncate text-[#171533] dark:text-[#F4F3FA]">
                       {getDispName(c.companion_name)}
                     </span>
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                    <span className="text-[10px] text-[#68657D] dark:text-[#9E9AB3] shrink-0">
                       01:32 PM
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block shrink-0 animate-pulse"></span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#23C4F0] inline-block shrink-0 animate-pulse"></span>
+                    <span className="text-[11px] text-[#68657D] dark:text-[#9E9AB3] truncate">
                       Online • {getCompanionGender(c.companion_name)}
                     </span>
                   </div>
@@ -483,7 +473,7 @@ export default function Chat() {
                   type="button"
                   title="Delete companion"
                   onClick={(e) => handleDeleteCompanion(e, c.id, c.companion_name)}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all shrink-0 cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-[#68657D] hover:text-[#E4586E] hover:bg-[#E4586E]/10 transition-all shrink-0 cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3 6 5 6 21 6" />
@@ -496,15 +486,15 @@ export default function Chat() {
         </div>
 
         {/* User Footer */}
-        <div className="p-3 border-t border-slate-200/80 dark:border-teal-500/10 flex items-center justify-between gap-2 bg-slate-50/50 dark:bg-[#060a0a]/50">
+        <div className="p-3 border-t border-[#E7E5F0] dark:border-[#262247] flex items-center justify-between gap-2 bg-[#F8F7FC]/70 dark:bg-[#141228]/70">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#643EF3] text-white font-bold text-xs flex items-center justify-center shrink-0 shadow-xs">
               {getAvatarChar(user?.name)}
             </div>
             <div className="min-w-0">
-              <span className="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">{user?.name || 'User'}</span>
-              <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+              <span className="block text-xs font-semibold text-[#171533] dark:text-[#F4F3FA] truncate">{user?.name || 'User'}</span>
+              <span className="flex items-center gap-1 text-[10px] text-[#68657D] dark:text-[#9E9AB3]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#23C4F0]"></span> Online
               </span>
             </div>
           </div>
@@ -514,7 +504,7 @@ export default function Chat() {
               type="button"
               onClick={toggleTheme}
               title="Toggle theme"
-              className="p-2 rounded-xl text-slate-500 dark:text-teal-400 hover:bg-slate-200 dark:hover:bg-teal-950/50 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-[#68657D] dark:text-[#9E9AB3] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1A3C] hover:text-[#643EF3] dark:hover:text-[#8D6BFF] transition-colors cursor-pointer"
             >
               {theme === 'dark' ? (
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -531,7 +521,7 @@ export default function Chat() {
               id="logout-btn"
               onClick={() => { logout(); navigate('/login'); }}
               title="Logout"
-              className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              className="p-2 rounded-xl text-[#68657D] dark:text-[#9E9AB3] hover:text-[#E4586E] hover:bg-[#E4586E]/10 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -544,67 +534,46 @@ export default function Chat() {
       </aside>
 
       {/* ============ MAIN CHAT CONTAINER ============ */}
-      <section className="flex-1 flex flex-col h-full min-w-0 bg-slate-50/75 dark:bg-[#060a0a]/75 backdrop-blur-[2px] relative">
+      <section className="flex-1 flex flex-col h-full min-w-0 bg-[#F8F7FC]/90 dark:bg-[#0C0A1B]/90 backdrop-blur-[2px] relative">
         {!activeCompanion ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="relative mb-4">
-              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-teal-400 via-blue-500 to-purple-600 opacity-25 blur-lg"></div>
+              <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[#23C4F0] via-[#4B8BFA] to-[#643EF3] opacity-30 blur-lg"></div>
               <img
                 src="/talkmate-icon.png"
                 alt="TalkMate"
-                className="relative w-20 h-20 rounded-3xl object-cover shadow-xl border border-white/20"
+                className="relative w-20 h-20 rounded-3xl object-cover shadow-xl border border-white/40 dark:border-white/10"
               />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-              Welcome to Talk<span className="text-purple-600 dark:text-purple-400">Mate</span>
+            <h2 className="text-2xl font-bold text-[#171533] dark:text-[#F4F3FA]">
+              Welcome to Talk<span className="text-[#643EF3] dark:text-[#8D6BFA]">Mate</span>
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mt-2 mb-6">
+            <p className="text-sm text-[#68657D] dark:text-[#A09DB8] max-w-sm mt-2 mb-6">
               Connect with your personal companion. Pick a chat from the sidebar or start fresh.
             </p>
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <button
-                id="quick-start-chat-btn"
-                type="button"
-                disabled={creatingChat}
-                onClick={handleQuickStart}
-                className="py-2.5 px-6 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white font-semibold text-sm shadow-md shadow-teal-600/20 transition-all cursor-pointer flex items-center gap-2 disabled:opacity-60"
-              >
-                {creatingChat ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Starting chat...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>💬</span>
-                    <span>Start Chatting Now</span>
-                  </>
-                )}
-              </button>
+            <div className="flex items-center justify-center">
               <button
                 id="customize-new-chat-btn"
                 type="button"
                 onClick={() => setShowNewChatModal(true)}
-                className="py-2.5 px-5 rounded-xl border border-slate-300 dark:border-teal-500/30 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-teal-950/40 font-medium text-sm transition-all cursor-pointer"
+                className="py-2.5 px-6 rounded-xl bg-[#643EF3] hover:bg-[#3A1ABB] active:scale-[0.99] text-white font-semibold text-sm shadow-md shadow-[#643EF3]/25 transition-all cursor-pointer flex items-center gap-2"
               >
-                + Customize Companion
+                <span>💬</span>
+                <span>Start New Chat</span>
               </button>
             </div>
           </div>
         ) : (
           <>
             {/* Chat Top Header */}
-            <header className="h-16 px-4 sm:px-6 border-b border-slate-200/90 dark:border-teal-500/15 bg-white/80 dark:bg-[#0c1413]/80 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-10">
+            <header className="h-16 px-4 sm:px-6 border-b border-[#E7E5F0] dark:border-[#26214B] bg-white/95 dark:bg-[#141228]/95 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-10">
               <div className="flex items-center gap-3 min-w-0">
                 {/* Mobile sidebar toggle button */}
                 <button
                   type="button"
                   onClick={() => setIsSidebarOpen(true)}
                   aria-label="Open menu"
-                  className="md:hidden p-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="md:hidden p-1.5 rounded-lg text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] hover:text-[#643EF3]"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="3" y1="12" x2="21" y2="12" />
@@ -619,11 +588,11 @@ export default function Chat() {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate">
+                  <div className="font-bold text-sm sm:text-base text-[#171533] dark:text-[#F4F3FA] truncate">
                     {getDispName(activeCompanion.companion_name)}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                  <div className="flex items-center gap-1.5 text-xs text-[#68657D] dark:text-[#A09DB8]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#23C4F0] shrink-0"></span>
                     <span className="truncate">Online • {getCompanionGender(activeCompanion.companion_name)}</span>
                   </div>
                 </div>
@@ -635,7 +604,7 @@ export default function Chat() {
                   type="button"
                   title="Voice call"
                   onClick={() => alert(`Starting voice call with ${getDispName(activeCompanion.companion_name)}...`)}
-                  className="p-2 sm:p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                  className="p-2 sm:p-2.5 rounded-full text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] hover:text-[#643EF3] transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -646,7 +615,7 @@ export default function Chat() {
                   type="button"
                   title="Video call"
                   onClick={() => alert(`Starting video call with ${getDispName(activeCompanion.companion_name)}...`)}
-                  className="p-2 sm:p-2.5 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-teal-950/40 transition-colors cursor-pointer"
+                  className="p-2 sm:p-2.5 rounded-full text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] hover:text-[#643EF3] transition-colors cursor-pointer"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="23 7 16 12 23 17 23 7" />
@@ -659,7 +628,7 @@ export default function Chat() {
                   id="clear-history-btn"
                   onClick={handleClear}
                   title="Clear history"
-                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-teal-500/20 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 py-1.5 px-3 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] text-xs font-semibold text-[#68657D] dark:text-[#A09DB8] hover:text-[#E4586E] dark:hover:text-[#F28FA3] hover:border-[#E4586E]/40 transition-colors cursor-pointer"
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
@@ -674,12 +643,12 @@ export default function Chat() {
               {loadingHistory && (
                 <div className="space-y-4 py-4">
                   <div className="flex items-start gap-2.5 max-w-xs animate-pulse">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-12 w-48 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                    <div className="w-8 h-8 rounded-full bg-[#E7E5F0] dark:bg-[#201C3E]" />
+                    <div className="h-12 w-48 rounded-2xl bg-[#E7E5F0] dark:bg-[#201C3E]" />
                   </div>
                   <div className="flex items-start gap-2.5 max-w-xs ml-auto flex-row-reverse animate-pulse">
-                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800" />
-                    <div className="h-10 w-40 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+                    <div className="w-8 h-8 rounded-full bg-[#E7E5F0] dark:bg-[#201C3E]" />
+                    <div className="h-10 w-40 rounded-2xl bg-[#E7E5F0] dark:bg-[#201C3E]" />
                   </div>
                 </div>
               )}
@@ -689,10 +658,10 @@ export default function Chat() {
                   <div className={`w-16 h-16 rounded-3xl bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-2xl shadow-lg mb-3`}>
                     {getAvatarChar(activeCompanion.companion_name)}
                   </div>
-                  <h3 className="font-bold text-base text-slate-800 dark:text-slate-100">
+                  <h3 className="font-bold text-base text-[#171533] dark:text-[#F4F3FA]">
                     {getDispName(activeCompanion.companion_name)} is waiting...
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs sm:text-sm text-[#68657D] dark:text-[#A09DB8] mt-1">
                     Say something to start your conversation!
                   </p>
                 </div>
@@ -709,7 +678,7 @@ export default function Chat() {
                     <Fragment key={msg.id || i}>
                       {showSeparator && (
                         <div className="flex items-center justify-center my-4">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-slate-200/80 dark:bg-[#111e1c] text-slate-600 dark:text-teal-400/90 border border-slate-300/40 dark:border-teal-500/15 shadow-2xs">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium bg-[#F1EEFF] dark:bg-[#1E1A3C] text-[#643EF3] dark:text-[#AD55FB] border border-[#E7E5F0] dark:border-[#643EF3]/25 shadow-2xs">
                             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                               <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -732,17 +701,17 @@ export default function Chat() {
                           <div
                             className={`p-3 sm:p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
                               msg.role === 'user'
-                                ? 'bg-teal-600 text-white rounded-br-xs shadow-md shadow-teal-600/15'
-                                : 'bg-white dark:bg-[#101b19] text-slate-900 dark:text-slate-100 rounded-bl-xs border border-slate-200/80 dark:border-teal-500/20 shadow-xs'
+                                ? 'bg-[#643EF3] text-white rounded-br-xs shadow-md shadow-[#643EF3]/20'
+                                : 'bg-white dark:bg-[#141228] text-[#171533] dark:text-[#F4F3FA] rounded-bl-xs border border-[#E7E5F0] dark:border-[#26214B] shadow-xs'
                             }`}
                           >
                             {msg.content}
                           </div>
 
-                          <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-slate-400 dark:text-slate-500 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`flex items-center gap-1.5 mt-1 px-1 text-[10px] text-[#68657D]/80 dark:text-[#A09DB8]/80 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <span>{timeStr(msg.created_at)}</span>
                             {msg.role === 'user' && (
-                              <span title="Delivered & read" className="text-teal-600 dark:text-teal-400">
+                              <span title="Delivered & read" className="text-[#4B8BFA] dark:text-[#23C4F0]">
                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="18 6 9 17 4 12" />
                                   <polyline points="22 10 13 21 11 19" />
@@ -753,7 +722,7 @@ export default function Chat() {
                         </div>
 
                         {msg.role === 'user' && (
-                          <div className="w-7 h-7 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center shrink-0 mb-1">
+                          <div className="w-7 h-7 rounded-full bg-[#643EF3] text-white text-xs font-bold flex items-center justify-center shrink-0 mb-1 shadow-xs">
                             {getAvatarChar(user?.name)}
                           </div>
                         )}
@@ -768,7 +737,7 @@ export default function Chat() {
                   <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${getAvatarGradient(activeCompanion.companion_name)} flex items-center justify-center text-white text-xs font-semibold shadow-xs shrink-0 mb-1`}>
                     {getAvatarChar(activeCompanion.companion_name)}
                   </div>
-                  <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-xs bg-white dark:bg-[#101b19] border border-slate-200/80 dark:border-teal-500/20 text-xs sm:text-sm text-slate-900 dark:text-slate-100 shadow-xs">
+                  <div className="p-3 sm:p-3.5 rounded-2xl rounded-bl-xs bg-white dark:bg-[#141228] border border-[#E7E5F0] dark:border-[#26214B] text-xs sm:text-sm text-[#171533] dark:text-[#F4F3FA] shadow-xs">
                     {streamingText ? (
                       <>
                         <span>{streamingText}</span>
@@ -776,9 +745,9 @@ export default function Chat() {
                       </>
                     ) : (
                       <div className="flex items-center gap-1.5 py-1 px-1">
-                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce"></span>
-                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:0.15s]"></span>
-                        <span className="w-2 h-2 rounded-full bg-teal-500 animate-bounce [animation-delay:0.3s]"></span>
+                        <span className="w-2 h-2 rounded-full bg-[#23C4F0] animate-bounce"></span>
+                        <span className="w-2 h-2 rounded-full bg-[#23C4F0] animate-bounce [animation-delay:0.15s]"></span>
+                        <span className="w-2 h-2 rounded-full bg-[#23C4F0] animate-bounce [animation-delay:0.3s]"></span>
                       </div>
                     )}
                   </div>
@@ -788,21 +757,21 @@ export default function Chat() {
             </div>
 
             {errorMsg && (
-              <div className="mx-4 mb-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center justify-between">
+              <div className="mx-4 mb-2 p-2.5 rounded-xl bg-[#E4586E]/10 border border-[#E4586E]/30 text-[#E4586E] dark:text-[#F28FA3] text-xs flex items-center justify-between">
                 <span>⚠️ {errorMsg}</span>
                 <button onClick={() => setErrorMsg('')} className="font-bold text-sm px-2 cursor-pointer">×</button>
               </div>
             )}
 
             {/* Input Composer */}
-            <footer className="p-3 sm:p-4 bg-white/90 dark:bg-[#0c1413]/90 border-t border-slate-200/80 dark:border-teal-500/15 backdrop-blur-md flex items-center gap-2">
-              <div className="relative flex-1 flex items-center bg-slate-100 dark:bg-[#060a0a] border border-slate-200 dark:border-teal-500/20 rounded-full px-3 py-1.5 shadow-inner">
+            <footer className="p-3 sm:p-4 bg-white/95 dark:bg-[#141228]/95 border-t border-[#E7E5F0] dark:border-[#26214B] backdrop-blur-md flex items-center gap-2">
+              <div className="relative flex-1 flex items-center bg-[#F8F7FC] dark:bg-[#0C0A1B] border border-[#E7E5F0] dark:border-[#26214B] focus-within:border-[#643EF3] focus-within:ring-2 focus-within:ring-[#643EF3]/20 rounded-full px-3 py-1.5 shadow-xs transition-all">
                 {/* Emoji button */}
                 <button
                   type="button"
                   title="Emoji"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-1 text-slate-500 dark:text-teal-400 hover:text-slate-700 dark:hover:text-teal-300 transition-colors cursor-pointer shrink-0"
+                  className="p-1 text-[#68657D] dark:text-[#A09DB8] hover:text-[#643EF3] dark:hover:text-[#AD55FB] transition-colors cursor-pointer shrink-0"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10" />
@@ -830,7 +799,7 @@ export default function Chat() {
                   onKeyDown={handleKey}
                   disabled={isStreaming}
                   autoComplete="off"
-                  className="flex-1 bg-transparent px-2.5 py-1 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none"
+                  className="flex-1 bg-transparent px-2.5 py-1 text-xs sm:text-sm text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 dark:placeholder-[#A09DB8]/60 focus:outline-none"
                 />
               </div>
 
@@ -839,7 +808,7 @@ export default function Chat() {
                 type="button"
                 title="Attach file"
                 onClick={() => alert('Attachment feature coming soon!')}
-                className="w-10 h-10 rounded-full border border-slate-200 dark:border-teal-500/20 bg-slate-100 dark:bg-[#0c1413] text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-teal-950/40 transition-all cursor-pointer shrink-0"
+                className="w-10 h-10 rounded-full border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#141228] text-[#68657D] dark:text-[#A09DB8] flex items-center justify-center hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] hover:text-[#643EF3] transition-all cursor-pointer shrink-0"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -854,8 +823,8 @@ export default function Chat() {
                 onClick={handleVoice}
                 className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                   isListening
-                    ? 'border-rose-500 bg-rose-500/20 text-rose-500 ring-2 ring-rose-500 animate-voice-pulse'
-                    : 'border-slate-200 dark:border-teal-500/20 bg-slate-100 dark:bg-[#0c1413] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-teal-950/40'
+                    ? 'border-[#E4586E] bg-[#E4586E]/15 text-[#E4586E] ring-2 ring-[#E4586E]/40 animate-voice-pulse'
+                    : 'border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#141228] text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] hover:text-[#643EF3]'
                 }`}
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -872,7 +841,7 @@ export default function Chat() {
                 onClick={handleSend}
                 disabled={isStreaming || !input.trim()}
                 aria-label="Send"
-                className="w-10 h-10 rounded-full bg-teal-600 hover:bg-teal-500 active:scale-95 text-white flex items-center justify-center shadow-md shadow-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
+                className="w-10 h-10 rounded-full bg-[#643EF3] hover:bg-[#3A1ABB] active:scale-95 text-white flex items-center justify-center shadow-md shadow-[#643EF3]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shrink-0"
               >
                 <svg className="w-4 h-4 translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="22" y1="2" x2="11" y2="13" />
@@ -891,20 +860,20 @@ export default function Chat() {
           onClick={() => setModalConfig(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#101c1a] border border-slate-200 dark:border-teal-500/20 p-6 shadow-2xl space-y-4"
+            className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#141228] border border-[#E7E5F0] dark:border-[#26214B] p-6 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-bold text-base text-slate-900 dark:text-white">
+            <h3 className="font-bold text-base text-[#171533] dark:text-[#F4F3FA]">
               {modalConfig.title}
             </h3>
-            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#68657D] dark:text-[#A09DB8] leading-relaxed">
               {modalConfig.description}
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => setModalConfig(null)}
-                className="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="py-2 px-4 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] text-xs font-semibold text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -914,7 +883,7 @@ export default function Chat() {
                   modalConfig.onConfirm();
                   setModalConfig(null);
                 }}
-                className="py-2 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md shadow-rose-600/20 transition-all cursor-pointer"
+                className="py-2 px-4 rounded-xl bg-[#E4586E] hover:bg-[#c9455a] text-white text-xs font-semibold shadow-md shadow-[#E4586E]/20 transition-all cursor-pointer"
               >
                 {modalConfig.confirmText || 'Confirm'}
               </button>
@@ -930,65 +899,35 @@ export default function Chat() {
           onClick={() => setShowNewChatModal(false)}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-white dark:bg-[#0c1413] border border-slate-200 dark:border-teal-500/30 p-6 sm:p-7 shadow-2xl space-y-4 my-auto"
+            className="w-full max-w-md rounded-3xl bg-white dark:bg-[#141228] border border-[#E7E5F0] dark:border-[#26214B] p-6 sm:p-7 shadow-2xl space-y-4 my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-teal-500/15 pb-3.5">
+            <div className="flex items-center justify-between border-b border-[#E7E5F0] dark:border-[#26214B] pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center text-teal-600 dark:text-teal-400 text-lg">
+                <div className="w-9 h-9 rounded-xl bg-[#F1EEFF] dark:bg-[#1E1A3C] border border-[#643EF3]/30 flex items-center justify-center text-[#643EF3] dark:text-[#AD55FB] text-lg">
                   💬
                 </div>
                 <div>
-                  <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  <h3 className="font-bold text-base text-[#171533] dark:text-[#F4F3FA]">
                     Start a New Chat
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Pick a friend preset or customize your companion
+                  <p className="text-[11px] text-[#68657D] dark:text-[#A09DB8]">
+                    Customize your personal companion
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowNewChatModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="p-1.5 rounded-lg text-[#68657D] hover:text-[#171533] dark:hover:text-[#F4F3FA] cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {/* Quick Pick Presets */}
-            <div>
-              <span className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
-                ⚡ Quick Start (1-Click)
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {QUICK_PRESETS.map((p) => (
-                  <button
-                    key={p.name}
-                    type="button"
-                    disabled={creatingChat}
-                    onClick={() => handleCreateCompanion(p.name, p.gender, p.emoji)}
-                    className="p-2.5 rounded-2xl border border-slate-200 dark:border-teal-500/20 bg-slate-50 dark:bg-[#070c0b] hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-950/40 text-center transition-all cursor-pointer group"
-                  >
-                    <span className="block text-2xl mb-1 group-hover:scale-110 transition-transform">{p.emoji}</span>
-                    <span className="block text-xs font-bold text-slate-800 dark:text-slate-200">{p.name}</span>
-                    <span className="block text-[10px] text-slate-400 dark:text-slate-500 truncate">{p.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-slate-200 dark:bg-teal-500/15" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                Or Customize
-              </span>
-              <div className="flex-1 h-px bg-slate-200 dark:bg-teal-500/15" />
-            </div>
-
             {createChatError && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-[#E4586E]/10 border border-[#E4586E]/30 text-[#E4586E] dark:text-[#F28FA3] text-xs flex items-center gap-2">
                 <span>⚠️</span>
                 <span>{createChatError}</span>
               </div>
@@ -1003,7 +942,7 @@ export default function Chat() {
                     type="button"
                     title="Change Emoji"
                     onClick={() => setShowModalEmojiPicker(!showModalEmojiPicker)}
-                    className="w-12 h-12 rounded-2xl border-2 border-dashed border-teal-500/60 bg-slate-50 dark:bg-[#070c0b] flex items-center justify-center text-2xl shadow-xs cursor-pointer hover:scale-105 transition-transform shrink-0"
+                    className="w-12 h-12 rounded-2xl border-2 border-dashed border-[#643EF3]/50 bg-[#F8F7FC] dark:bg-[#0C0A1B] flex items-center justify-center text-2xl shadow-xs cursor-pointer hover:scale-105 hover:border-[#643EF3] transition-all shrink-0"
                   >
                     {newEmoji}
                   </button>
@@ -1021,24 +960,24 @@ export default function Chat() {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1" htmlFor="modal-comp-name">
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1" htmlFor="modal-comp-name">
                     Companion Name
                   </label>
                   <input
                     id="modal-comp-name"
                     type="text"
-                    placeholder="e.g. Priya, Arjun, Siri..."
+                    placeholder="e.g. Maya, Alex, Sam..."
                     value={newCompanionName}
                     onChange={(e) => setNewCompanionName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleCreateCompanion()}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 text-xs sm:text-sm focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    className="w-full px-3 py-2 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs sm:text-sm focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20"
                   />
                 </div>
               </div>
 
               {/* Companion's Gender */}
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1.5">
                   Companion's Gender
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -1049,8 +988,8 @@ export default function Chat() {
                       onClick={() => setNewCompanionGender(g)}
                       className={`py-1.5 px-3 rounded-xl border text-xs font-semibold capitalize transition-all cursor-pointer ${
                         newCompanionGender === g
-                          ? 'border-teal-500 bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-1 ring-teal-500/40'
-                          : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                          ? 'border-[#643EF3] bg-[#F1EEFF] dark:bg-[#1E1A3C] text-[#643EF3] dark:text-[#AD55FB] ring-1 ring-[#643EF3]/40'
+                          : 'border-[#E7E5F0] dark:border-[#26214B] text-[#68657D] dark:text-[#A09DB8] hover:border-[#643EF3]/40'
                       }`}
                     >
                       {g}
@@ -1061,15 +1000,15 @@ export default function Chat() {
 
               {/* Context / Scenario */}
               <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
-                  Context / Vibe <span className="lowercase font-normal text-slate-400">(optional)</span>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[#68657D] dark:text-[#A09DB8] mb-1">
+                  Context / Vibe <span className="lowercase font-normal text-[#68657D]/70">(optional)</span>
                 </label>
                 <textarea
                   rows={2}
                   placeholder="e.g. Best friend from college, talks casually in Telugu/Tanglish..."
                   value={newScenario}
                   onChange={(e) => setNewScenario(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-teal-500/20 bg-slate-50/70 dark:bg-[#060a0a]/70 text-slate-900 dark:text-white placeholder-slate-400 text-xs focus:outline-none focus:ring-1 focus:ring-teal-500 resize-none"
+                  className="w-full p-2.5 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] bg-[#F8F7FC] dark:bg-[#0C0A1B] text-[#171533] dark:text-[#F4F3FA] placeholder-[#68657D]/60 text-xs focus:outline-none focus:border-[#643EF3] focus:ring-2 focus:ring-[#643EF3]/20 resize-none"
                 />
               </div>
             </div>
@@ -1079,7 +1018,7 @@ export default function Chat() {
               <button
                 type="button"
                 onClick={() => setShowNewChatModal(false)}
-                className="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                className="py-2 px-4 rounded-xl border border-[#E7E5F0] dark:border-[#26214B] text-xs font-semibold text-[#68657D] dark:text-[#A09DB8] hover:bg-[#F1EEFF] dark:hover:bg-[#1E1B38] transition-colors cursor-pointer"
               >
                 Cancel
               </button>
@@ -1088,7 +1027,7 @@ export default function Chat() {
                 type="button"
                 disabled={creatingChat}
                 onClick={() => handleCreateCompanion()}
-                className="py-2 px-5 rounded-xl bg-teal-600 hover:bg-teal-500 active:scale-[0.99] text-white text-xs sm:text-sm font-semibold shadow-md shadow-teal-600/20 transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2"
+                className="py-2 px-5 rounded-xl bg-[#643EF3] hover:bg-[#3A1ABB] active:scale-[0.99] text-white text-xs sm:text-sm font-semibold shadow-md shadow-[#643EF3]/25 transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2"
               >
                 {creatingChat ? (
                   <>
